@@ -101,8 +101,6 @@
 **Git:** Clean working directory, all changes committed  
 **Dependencies:** Installed and configured
 
-**Project Location:** `[Your project path]/ekenobizi-voice`
-
 ---
 
 ## DEVELOPMENT NOTES
