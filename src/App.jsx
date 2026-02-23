@@ -1,6 +1,9 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+import Register from "./pages/Register";
+import Login from "./pages/Login";
 import Home from "./pages/Home";
 
 // Placeholder for pages we haven't built yet
@@ -20,22 +23,24 @@ const ComingSoon = ({ page }) => (
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <div className="flex flex-col min-h-screen">
-        <Header />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/stories" element={<ComingSoon page="Stories" />} />
-          <Route path="/community" element={<ComingSoon page="Community" />} />
-          <Route path="/about" element={<ComingSoon page="About" />} />
-          <Route path="/login" element={<ComingSoon page="Sign In" />} />
-          <Route
-            path="/signup"
-            element={<ComingSoon page="Join Community" />}
-          />
-        </Routes>
-        <Footer />
-      </div>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <div className="flex flex-col min-h-screen">
+          <Header />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/stories" element={<ComingSoon page="Stories" />} />
+            <Route
+              path="/community"
+              element={<ComingSoon page="Community" />}
+            />
+            <Route path="/about" element={<ComingSoon page="About" />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+          </Routes>
+          <Footer />
+        </div>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
