@@ -45,9 +45,12 @@ export default function Header() {
           {user ? (
             // Logged in state
             <>
-              <span className="text-sm text-gray-300">
-                {user.user_metadata?.username || user.email}
-              </span>
+              <Link
+                to="/profile"
+                className="text-sm font-semibold text-white hover:text-accent transition-colors"
+              >
+                @{user.user_metadata?.username || user.email}
+              </Link>
               <button
                 onClick={signOut}
                 className="border border-gray-500 text-white px-4 py-2 rounded-full text-sm hover:border-white transition-colors"
