@@ -1,47 +1,62 @@
 import { Link } from "react-router-dom";
-
-// Placeholder posts — we replace this with real Supabase data on Day 4
-const PLACEHOLDER_POSTS = [
-  {
-    id: 1,
-    title: "The Revival of Ekenobizi Market: A New Dawn for Local Trade",
-    excerpt:
-      "Community leaders and traders gathered last week to discuss the future of our beloved market square, with promising plans for infrastructure and digital payment adoption.",
-    author: "Chidinma Okafor",
-    date: "Feb 18, 2026",
-    category: "Economy",
-    readTime: "4 min read",
-  },
-  {
-    id: 2,
-    title: "Youth Football Academy Opens Its Doors to Umuahia Talents",
-    excerpt:
-      "A new grassroots football initiative is giving young people from Ekenobizi and surrounding communities access to professional coaching and development pathways.",
-    author: "Emeka Nwosu",
-    date: "Feb 15, 2026",
-    category: "Sports",
-    readTime: "3 min read",
-  },
-  {
-    id: 3,
-    title:
-      "How Our Grandmothers Kept Igbo Traditions Alive Through Storytelling",
-    excerpt:
-      "A tribute to the oral tradition that shaped generations — and a call to document these stories before they fade from living memory.",
-    author: "Adaeze Eze",
-    date: "Feb 12, 2026",
-    category: "Culture",
-    readTime: "6 min read",
-  },
-];
+import { useEffect, useState } from "react";
+import { supabase } from "../services/supabase";
 
 const categoryColors = {
   Economy: "bg-yellow-100 text-yellow-800",
   Sports: "bg-blue-100 text-blue-800",
   Culture: "bg-purple-100 text-purple-800",
+  Community: "bg-red-100 text-red-800",
+  Youth: "bg-green-100 text-green-800",
 };
 
 export default function Home() {
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function fetchPosts() {
+      const { data, error } = await supabase
+        .from("posts")
+        .select("*, profiles(username)")
+        .eq("published", true)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        setError("Failed to load posts. Please try again.");
+      } else {
+        setPosts(data);
+      }
+      setLoading(false);
+    }
+
+    fetchPosts();
+  }, []);
+
+  if (loading)
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center">
+        <p className="text-gray-500 text-lg">Loading stories...</p>
+      </div>
+    );
+
+  if (error)
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center">
+        <p className="text-red-500 text-lg">{error}</p>
+      </div>
+    );
+
+  if (posts.length === 0)
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center">
+        <p className="text-gray-500 text-lg">
+          No stories yet. Check back soon.
+        </p>
+      </div>
+    );
+
   return (
     <main className="min-h-screen bg-cream">
       {/* ── HERO ── */}
@@ -120,39 +135,40 @@ export default function Home() {
             <div className="p-8">
               <div className="flex items-center gap-3 mb-4">
                 <span
-                  className={`text-xs font-bold px-3 py-1 rounded-full ${categoryColors[PLACEHOLDER_POSTS[0].category]}`}
+                  className={`text-xs font-bold px-3 py-1 rounded-full ${categoryColors[posts[0].category]}`}
                 >
-                  {PLACEHOLDER_POSTS[0].category}
+                  {posts[0].category}
                 </span>
-                <span className="text-gray-400 text-xs">
-                  {PLACEHOLDER_POSTS[0].readTime}
-                </span>
+                <span className="text-gray-400 text-xs">4 min read</span>
               </div>
               <h3
                 className="text-2xl font-bold text-charcoal mb-3 group-hover:text-primary transition-colors leading-snug"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
-                {PLACEHOLDER_POSTS[0].title}
+                {posts[0].title}
               </h3>
               <p className="text-gray-500 leading-relaxed mb-6">
-                {PLACEHOLDER_POSTS[0].excerpt}
+                {posts[0].excerpt}
               </p>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white text-xs font-bold">
-                    {PLACEHOLDER_POSTS[0].author[0]}
+                    {posts[0].profiles.username[0].toUpperCase()}
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-charcoal">
-                      {PLACEHOLDER_POSTS[0].author}
+                      {posts[0].profiles.username}
                     </p>
                     <p className="text-xs text-gray-400">
-                      {PLACEHOLDER_POSTS[0].date}
+                      {new Date(posts[0].created_at).toLocaleDateString(
+                        "en-NG",
+                        { year: "numeric", month: "long", day: "numeric" },
+                      )}
                     </p>
                   </div>
                 </div>
                 <Link
-                  to={`/post/${PLACEHOLDER_POSTS[0].id}`}
+                  to={`/post/${posts[0].id}`}
                   className="text-primary text-sm font-semibold hover:underline"
                 >
                   Read More →
@@ -163,7 +179,7 @@ export default function Home() {
 
           {/* Sidebar posts */}
           <div className="flex flex-col gap-6">
-            {PLACEHOLDER_POSTS.slice(1).map((post) => (
+            {posts.slice(1).map((post) => (
               <article
                 key={post.id}
                 className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow duration-300 group flex flex-col justify-between"
@@ -175,9 +191,7 @@ export default function Home() {
                     >
                       {post.category}
                     </span>
-                    <span className="text-gray-400 text-xs">
-                      {post.readTime}
-                    </span>
+                    <span className="text-gray-400 text-xs">3 min read</span>
                   </div>
                   <h3
                     className="text-lg font-bold text-charcoal mb-2 group-hover:text-primary transition-colors leading-snug"
@@ -192,13 +206,19 @@ export default function Home() {
                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold">
-                      {post.author[0]}
+                      {post.profiles.username[0].toUpperCase()}
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-charcoal">
-                        {post.author}
+                        {post.profiles.username}
                       </p>
-                      <p className="text-xs text-gray-400">{post.date}</p>
+                      <p className="text-xs text-gray-400">
+                        {new Date(post.created_at).toLocaleDateString("en-NG", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </p>
                     </div>
                   </div>
                   <Link
