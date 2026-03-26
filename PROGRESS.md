@@ -36,6 +36,7 @@ ekenobizi-voice/
 │   ├── components/
 │   │   ├── Header.jsx
 │   │   ├── Footer.jsx
+│   │   ├── PostCard.jsx
 │   │   └── ProtectedRoute.jsx
 │   ├── contexts/
 │   │   └── AuthContext.jsx
@@ -44,7 +45,11 @@ ekenobizi-voice/
 │   │   ├── Home.jsx
 │   │   ├── About.jsx
 │   │   ├── Register.jsx
-│   │   └── Login.jsx
+│   │   ├── Login.jsx
+│   │   ├── Profile.jsx
+│   │   ├── PostPage.jsx
+│   │   ├── ForgotPassword.jsx
+│   │   └── ResetPassword.jsx
 │   ├── services/
 │   │   └── supabase.js
 │   ├── styles/
@@ -157,6 +162,8 @@ posts
 ├── id          uuid PRIMARY KEY (auto-generated)
 ├── title       text NOT NULL
 ├── content     text NOT NULL
+├── excerpt     text NOT NULL DEFAULT ''
+├── category    text NOT NULL DEFAULT 'Community'
 ├── author_id   uuid NOT NULL → profiles.id
 ├── published   bool DEFAULT false
 ├── created_at  timestamptz DEFAULT now()
@@ -217,10 +224,10 @@ CREATE POLICY "Public can read published posts"
   ON posts FOR SELECT
   USING (published = true);
 
--- Users can read their own profile
-CREATE POLICY "Users can read own profile"
+-- Anyone can read profiles (needed for author join on post pages)
+CREATE POLICY "Public can read profiles"
   ON profiles FOR SELECT
-  USING (auth.uid() = id);
+  USING (true);
 
 -- Users can update their own profile
 CREATE POLICY "Users can update own profile"
@@ -246,6 +253,10 @@ import Home from "./pages/Home";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import About from "./pages/About";
+import Profile from "./pages/Profile";
+import PostPage from "./pages/PostPage";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
@@ -259,8 +270,17 @@ export default function App() {
             <Route path="/about" element={<About />} />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
-            {/* Future protected routes go here: */}
-            {/* <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} /> */}
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/post/:id" element={<PostPage />} />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </main>
         <Footer />
@@ -330,7 +350,7 @@ const { user, signOut } = useAuth();
 
 ## PROTECTED ROUTE (`src/components/ProtectedRoute.jsx`)
 
-Redirects unauthenticated users to `/login`. Ready for use — not yet applied to any routes (no protected pages built yet).
+Redirects unauthenticated users to `/login`.
 
 ```jsx
 import { Navigate } from "react-router-dom";
@@ -346,10 +366,50 @@ export default function ProtectedRoute({ children }) {
 
 ---
 
+## POSTCARD COMPONENT (`src/components/PostCard.jsx`)
+
+Reusable card for displaying post previews. Receives a `post` object as a prop.
+
+```jsx
+import { Link } from "react-router-dom";
+
+export default function PostCard({ post }) {
+  const excerpt = post.content.substring(0, 180) + "...";
+  const date = new Date(post.created_at).toLocaleDateString("en-NG", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  return (
+    <article className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col gap-3 hover:shadow-md transition-shadow">
+      <p className="text-xs text-accent font-semibold uppercase tracking-wide">
+        Community
+      </p>
+      <h2 className="font-playfair text-xl font-bold text-charcoal leading-snug">
+        {post.title}
+      </h2>
+      <p className="text-gray-600 text-sm leading-relaxed">{excerpt}</p>
+      <div className="flex items-center justify-between mt-2">
+        <span className="text-xs text-gray-400">{date}</span>
+        <Link
+          to={`/post/${post.id}`}
+          className="text-sm font-semibold text-primary hover:underline"
+        >
+          Read more →
+        </Link>
+      </div>
+    </article>
+  );
+}
+```
+
+---
+
 ## HEADER BEHAVIOUR
 
 - **Logged out:** Shows "Sign In" link + "Join Community" button → `/register`
-- **Logged in:** Shows username (`user.user_metadata?.username`) + "Sign Out" button
+- **Logged in:** Shows `@username` as a clickable `<Link>` → `/profile` + "Sign Out" button
 - Auth state read from `useAuth()` context
 
 ---
@@ -372,7 +432,7 @@ export default function ProtectedRoute({ children }) {
 2. `supabase.auth.signInWithPassword()` called
 3. On success → redirected to `/`
 4. `onAuthStateChange` fires → `AuthContext` updates `user` state globally
-5. Header updates to show username + Sign Out button
+5. Header updates to show `@username` link + Sign Out button
 6. Session persists on page refresh (Supabase stores token in localStorage)
 
 ### Logout
@@ -382,26 +442,40 @@ export default function ProtectedRoute({ children }) {
 3. `onAuthStateChange` fires → `user` set to `null`
 4. Header reverts to Sign In + Join Community
 
+### Forgot Password
+
+1. User clicks "Forgot password?" on Login page → `/forgot-password`
+2. Enters email → `supabase.auth.resetPasswordForEmail()` called with `redirectTo: http://localhost:5173/reset-password`
+3. Supabase sends reset email
+4. User clicks link → lands on `/reset-password`
+5. Enters new password → `supabase.auth.updateUser({ password })` called
+6. On success → redirected to `/login` after 2 seconds
+
 ---
 
 ## PAGES BUILT
 
-| Page     | Path        | File                     | Status                      |
-| -------- | ----------- | ------------------------ | --------------------------- |
-| Home     | `/`         | `src/pages/Home.jsx`     | ✅ Built (placeholder data) |
-| About    | `/about`    | `src/pages/About.jsx`    | 🔲 Empty placeholder        |
-| Register | `/register` | `src/pages/Register.jsx` | ✅ Built & wired            |
-| Login    | `/login`    | `src/pages/Login.jsx`    | ✅ Built & wired            |
+| Page            | Path               | File                           | Status                |
+| --------------- | ------------------ | ------------------------------ | --------------------- |
+| Home            | `/`                | `src/pages/Home.jsx`           | ✅ Live Supabase data |
+| Post            | `/post/:id`        | `src/pages/PostPage.jsx`       | ✅ Built & wired      |
+| About           | `/about`           | `src/pages/About.jsx`          | 🔲 Empty placeholder  |
+| Register        | `/register`        | `src/pages/Register.jsx`       | ✅ Built & wired      |
+| Login           | `/login`           | `src/pages/Login.jsx`          | ✅ Built & wired      |
+| Profile         | `/profile`         | `src/pages/Profile.jsx`        | ✅ Built & wired      |
+| Forgot Password | `/forgot-password` | `src/pages/ForgotPassword.jsx` | ✅ Built & wired      |
+| Reset Password  | `/reset-password`  | `src/pages/ResetPassword.jsx`  | ✅ Built & wired      |
 
 ---
 
 ## COMPONENTS BUILT
 
-| Component      | File                                | Purpose                                     |
-| -------------- | ----------------------------------- | ------------------------------------------- |
-| Header         | `src/components/Header.jsx`         | Sticky nav, logo, auth-aware buttons        |
-| Footer         | `src/components/Footer.jsx`         | 3-column, dynamic copyright year            |
-| ProtectedRoute | `src/components/ProtectedRoute.jsx` | Guards private routes (ready, not yet used) |
+| Component      | File                                | Purpose                              |
+| -------------- | ----------------------------------- | ------------------------------------ |
+| Header         | `src/components/Header.jsx`         | Sticky nav, logo, auth-aware buttons |
+| Footer         | `src/components/Footer.jsx`         | 3-column, dynamic copyright year     |
+| PostCard       | `src/components/PostCard.jsx`       | Reusable post preview card           |
+| ProtectedRoute | `src/components/ProtectedRoute.jsx` | Guards private routes                |
 
 ---
 
@@ -415,6 +489,8 @@ Day 3: Added logo to header
 Day 4: Wire Join Community button to register page
 Day 4: User registration with Supabase Auth
 Day 5: Login, Auth Context, protected routes, Header auth state
+Day 6: User profile page, profile editing, forgot/reset password flow
+Day 7: Live posts from Supabase, PostCard component, single PostPage
 ```
 
 ---
@@ -466,34 +542,45 @@ Day 5: Login, Auth Context, protected routes, Header auth state
 - `supabase.auth.signInWithPassword()`
 - `supabase.auth.signOut()`
 
+### Day 6
+
+- Fetching user-specific data with `.eq("id", user.id)` and `.single()`
+- Updating Supabase rows with `.update()`
+- Edit/display mode toggling with `useState`
+- Multi-page auth flows (request → email → reset)
+- `supabase.auth.resetPasswordForEmail()` for password reset emails
+- `supabase.auth.updateUser({ password })` for updating password
+- `useNavigate` + `setTimeout` for timed redirects after success
+- First real use of `ProtectedRoute` component
+
+### Day 7
+
+- `useEffect` with `[]` — run once on mount for data fetching
+- Three-state async pattern — `loading` / `error` / `data`
+- Supabase joins — `.select("*, profiles(username)")` fetches related table in one query
+- `useParams()` — reading dynamic values (`:id`) from the URL
+- `.single()` — telling Supabase to return one row instead of an array
+- RLS policies affecting joined data (public read policy needed on profiles)
+- Why dedicated DB columns (`category`, `excerpt`) are better than deriving data in frontend
+- Seeding real data via SQL Editor before building the UI
+
 ---
 
 ## CURRENT PROJECT STATE
 
-**Status:** ✅ Days 1–5 Complete
+**Status:** ✅ Days 1–7 Complete
 **Dev Server:** `npm run dev` → `http://localhost:5173`
-**Auth:** Registration + Login + Logout + Session persistence all working
+**Auth:** Registration + Login + Logout + Session persistence + Password reset all working
+**Profiles:** Users can view and edit their username and full name
+**Posts:** Home page displays live posts from Supabase. Single post view at `/post/:id` working.
 **Database:** 3 tables live (profiles, posts, comments). Trigger + RLS policies active.
-**Pending:** Email confirmation testing (Supabase free tier rate limit — test when cleared)
+**Seed Data:** 3 published posts inserted (Community, Culture, Youth categories)
 
 ---
 
 ## NEXT STEPS
 
-### 📋 DAY 6: Blog Posts — Reading
-
-**Goals:**
-
-- Connect Home page to real Supabase data (replace placeholder posts)
-- Build individual Post page (`/post/:id`)
-- Fetch and display post content
-- Query only published posts
-
-**Estimated Time:** 2 – 2.5 hours
-
----
-
-### 📋 DAY 7: Blog Posts — Writing (Admin)
+### 📋 DAY 8: Blog Posts — Writing (Admin)
 
 **Goals:**
 
@@ -502,9 +589,11 @@ Day 5: Login, Auth Context, protected routes, Header auth state
 - Save posts to Supabase
 - Toggle published/draft status
 
+**Estimated Time:** 2 – 2.5 hours
+
 ---
 
-### 📋 DAY 8: Comments System
+### 📋 DAY 9: Comments System
 
 **Goals:**
 
@@ -523,6 +612,7 @@ Day 5: Login, Auth Context, protected routes, Header auth state
 - Understanding "why" behind each decision
 - Terminal commands preferred for efficiency
 - Developer executes, Claude directs
+- Share existing files before updates — Claude works with what exists
 
 **Key Decisions Made:**
 
@@ -538,7 +628,12 @@ Day 5: Login, Auth Context, protected routes, Header auth state
 10. Email confirmation left enabled (not disabled during dev)
 11. `AuthProvider` wraps entire app at the root level
 12. `onAuthStateChange` used for real-time auth sync across all components
+13. Profile page reads from `profiles` table (source of truth) not just `user_metadata`
+14. Password reset uses Supabase's built-in email flow with `redirectTo` pointing to `/reset-password`
+15. `category` and `excerpt` added as proper DB columns — not derived in frontend
+16. Public RLS policy on `profiles` allows author username to be joined on post queries
+17. Home page uses featured post + sidebar layout (first post large, rest stacked)
 
 ---
 
-_Last Updated: Day 5 Complete — Feb 23, 2026_
+_Last Updated: Day 7 Complete — Mar 14, 2026_

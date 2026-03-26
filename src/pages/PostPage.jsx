@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "../services/supabase";
+import Comment from "../components/Comment";
 
 export default function PostPage() {
   const { id } = useParams();
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const [comments, setComments] = useState([]);
+  const [commentsLoading, setCommentsLoading] = useState(true);
+  const [commentsError, setCommentsError] = useState(null);
 
   useEffect(() => {
     async function fetchPost() {
@@ -26,6 +31,25 @@ export default function PostPage() {
     }
 
     fetchPost();
+  }, [id]);
+
+  useEffect(() => {
+    async function fetchComments() {
+      const { data, error } = await supabase
+        .from("comments")
+        .select("*, profiles(username)")
+        .eq("post_id", id)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        setCommentsError("Could not load comments.");
+      } else {
+        setComments(data);
+      }
+      setCommentsLoading(false);
+    }
+
+    fetchComments();
   }, [id]);
 
   if (loading)
@@ -96,6 +120,43 @@ export default function PostPage() {
           <div className="text-charcoal leading-8 text-base whitespace-pre-wrap">
             {post.content}
           </div>
+        </div>
+
+        {/* ── COMMENTS ── */}
+        <div className="bg-white rounded-2xl p-8 md:p-12 shadow-sm mt-8">
+          <h2
+            className="text-2xl font-bold text-charcoal mb-6"
+            style={{ fontFamily: "'Playfair Display', serif" }}
+          >
+            Comments
+            {!commentsLoading && (
+              <span className="text-gray-400 font-normal text-lg ml-2">
+                ({comments.length})
+              </span>
+            )}
+          </h2>
+
+          {commentsLoading && (
+            <p className="text-gray-400 text-sm">Loading comments...</p>
+          )}
+
+          {commentsError && (
+            <p className="text-red-400 text-sm">{commentsError}</p>
+          )}
+
+          {!commentsLoading && !commentsError && comments.length === 0 && (
+            <p className="text-gray-400 text-sm italic">
+              No comments yet. Be the first to share your thoughts.
+            </p>
+          )}
+
+          {!commentsLoading && !commentsError && comments.length > 0 && (
+            <div className="flex flex-col gap-6">
+              {comments.map((comment) => (
+                <Comment key={comment.id} comment={comment} />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Back link */}

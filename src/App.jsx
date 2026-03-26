@@ -9,6 +9,7 @@ import Profile from "./pages/Profile";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Home from "./pages/Home";
+import PostPage from "./pages/PostPage";
 
 // Placeholder for pages we haven't built yet
 const ComingSoon = ({ page }) => (
@@ -43,6 +44,7 @@ export default function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/post/:id" element={<PostPage />} />
             <Route
               path="/profile"
               element={
