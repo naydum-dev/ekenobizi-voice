@@ -37,6 +37,7 @@ ekenobizi-voice/
 │   │   ├── Header.jsx
 │   │   ├── Footer.jsx
 │   │   ├── PostCard.jsx
+│   │   ├── Comment.jsx
 │   │   └── ProtectedRoute.jsx
 │   ├── contexts/
 │   │   └── AuthContext.jsx
@@ -238,6 +239,16 @@ CREATE POLICY "Users can update own profile"
 CREATE POLICY "Service can insert profiles"
   ON profiles FOR INSERT
   WITH CHECK (true);
+
+-- Anyone can read comments
+CREATE POLICY "Public can read comments"
+  ON comments FOR SELECT
+  USING (true);
+
+-- Authenticated users can insert their own comments
+CREATE POLICY "Authenticated users can insert comments"
+  ON comments FOR INSERT
+  WITH CHECK (auth.uid() = author_id);
 ```
 
 ---
@@ -339,13 +350,6 @@ export function useAuth() {
 }
 ```
 
-**Usage in any component:**
-
-```jsx
-import { useAuth } from "../contexts/AuthContext";
-const { user, signOut } = useAuth();
-```
-
 ---
 
 ## PROTECTED ROUTE (`src/components/ProtectedRoute.jsx`)
@@ -406,6 +410,46 @@ export default function PostCard({ post }) {
 
 ---
 
+## COMMENT COMPONENT (`src/components/Comment.jsx`)
+
+Reusable component for displaying a single comment. Receives a `comment` object as a prop.
+
+```jsx
+export default function Comment({ comment }) {
+  const date = new Date(comment.created_at).toLocaleDateString("en-NG", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const initial = comment.profiles.username[0].toUpperCase();
+
+  return (
+    <div className="flex gap-4">
+      {/* Avatar */}
+      <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+        {initial}
+      </div>
+
+      {/* Body */}
+      <div className="flex-1">
+        <div className="flex items-baseline gap-2 mb-1">
+          <span className="font-semibold text-charcoal text-sm">
+            @{comment.profiles.username}
+          </span>
+          <span className="text-gray-400 text-xs">{date}</span>
+        </div>
+        <p className="text-gray-700 text-sm leading-relaxed">
+          {comment.content}
+        </p>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
 ## HEADER BEHAVIOUR
 
 - **Logged out:** Shows "Sign In" link + "Join Community" button → `/register`
@@ -458,7 +502,7 @@ export default function PostCard({ post }) {
 | Page            | Path               | File                           | Status                |
 | --------------- | ------------------ | ------------------------------ | --------------------- |
 | Home            | `/`                | `src/pages/Home.jsx`           | ✅ Live Supabase data |
-| Post            | `/post/:id`        | `src/pages/PostPage.jsx`       | ✅ Built & wired      |
+| Post            | `/post/:id`        | `src/pages/PostPage.jsx`       | ✅ Comments working   |
 | About           | `/about`           | `src/pages/About.jsx`          | 🔲 Empty placeholder  |
 | Register        | `/register`        | `src/pages/Register.jsx`       | ✅ Built & wired      |
 | Login           | `/login`           | `src/pages/Login.jsx`          | ✅ Built & wired      |
@@ -475,6 +519,7 @@ export default function PostCard({ post }) {
 | Header         | `src/components/Header.jsx`         | Sticky nav, logo, auth-aware buttons |
 | Footer         | `src/components/Footer.jsx`         | 3-column, dynamic copyright year     |
 | PostCard       | `src/components/PostCard.jsx`       | Reusable post preview card           |
+| Comment        | `src/components/Comment.jsx`        | Reusable single comment display      |
 | ProtectedRoute | `src/components/ProtectedRoute.jsx` | Guards private routes                |
 
 ---
@@ -491,6 +536,8 @@ Day 4: User registration with Supabase Auth
 Day 5: Login, Auth Context, protected routes, Header auth state
 Day 6: User profile page, profile editing, forgot/reset password flow
 Day 7: Live posts from Supabase, PostCard component, single PostPage
+Day 8: Display comments on post page
+Day 8: Comment form — authenticated users can post comments
 ```
 
 ---
@@ -564,42 +611,51 @@ Day 7: Live posts from Supabase, PostCard component, single PostPage
 - Why dedicated DB columns (`category`, `excerpt`) are better than deriving data in frontend
 - Seeding real data via SQL Editor before building the UI
 
+### Day 8
+
+- Multiple `useEffect` hooks for independent data fetches
+- Extracting a function outside `useEffect` so it can be called from multiple places
+- Re-fetching after a mutation to keep UI in sync with the database
+- Conditional rendering based on auth state (`user ? form : sign in prompt`)
+- RLS policies for both SELECT and INSERT on the same table
+- Every new table needs its own RLS policies — missing policies fail silently (empty results, no error)
+
 ---
 
 ## CURRENT PROJECT STATE
 
-**Status:** ✅ Days 1–7 Complete
+**Status:** ✅ Days 1–8 Complete
 **Dev Server:** `npm run dev` → `http://localhost:5173`
 **Auth:** Registration + Login + Logout + Session persistence + Password reset all working
 **Profiles:** Users can view and edit their username and full name
 **Posts:** Home page displays live posts from Supabase. Single post view at `/post/:id` working.
+**Comments:** Comments display on post pages. Authenticated users can post comments. Logged-out users see a "Sign in" prompt.
 **Database:** 3 tables live (profiles, posts, comments). Trigger + RLS policies active.
-**Seed Data:** 3 published posts inserted (Community, Culture, Youth categories)
+**Seed Data:** 3 published posts + 2 seeded comments inserted via SQL Editor.
 
 ---
 
 ## NEXT STEPS
 
-### 📋 DAY 8: Blog Posts — Writing (Admin)
+### 📋 DAY 9 OPTIONS
 
-**Goals:**
+**Option A: Delete own comments**
+
+- Users can remove comments they posted
+- Delete button visible only on own comments
+- RLS delete policy on comments table
+
+**Option B: Create Post page (Admin)**
 
 - Build Create Post page (protected route)
 - Rich text or markdown editor
 - Save posts to Supabase
 - Toggle published/draft status
 
-**Estimated Time:** 2 – 2.5 hours
+**Option C: About page**
 
----
-
-### 📋 DAY 9: Comments System
-
-**Goals:**
-
-- Display comments on post page
-- Allow authenticated users to add comments
-- Delete own comments
+- Fill in the empty placeholder
+- Community info, mission statement
 
 ---
 
@@ -611,7 +667,7 @@ Day 7: Live posts from Supabase, PostCard component, single PostPage
 - Step-by-step guidance
 - Understanding "why" behind each decision
 - Terminal commands preferred for efficiency
-- Developer executes, Claude directs
+- Developer executes, Claude directs and writes files
 - Share existing files before updates — Claude works with what exists
 
 **Key Decisions Made:**
@@ -633,7 +689,9 @@ Day 7: Live posts from Supabase, PostCard component, single PostPage
 15. `category` and `excerpt` added as proper DB columns — not derived in frontend
 16. Public RLS policy on `profiles` allows author username to be joined on post queries
 17. Home page uses featured post + sidebar layout (first post large, rest stacked)
+18. `fetchComments` extracted outside `useEffect` so it can be called after comment insert
+19. RLS policies must be added per table — missing policies fail silently with empty results
 
 ---
 
-_Last Updated: Day 7 Complete — Mar 14, 2026_
+_Last Updated: Day 8 Complete — Mar 30, 2026_

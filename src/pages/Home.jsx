@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../services/supabase";
+import heroImage from "../assets/hero.jpg";
 
 const categoryColors = {
   Economy: "bg-yellow-100 text-yellow-800",
@@ -9,6 +10,13 @@ const categoryColors = {
   Community: "bg-red-100 text-red-800",
   Youth: "bg-green-100 text-green-800",
 };
+
+function animate(delay) {
+  return {
+    animation: `slideUp 700ms ease-out both`,
+    animationDelay: `${delay}ms`,
+  };
+}
 
 export default function Home() {
   const [posts, setPosts] = useState([]);
@@ -60,40 +68,69 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-cream">
       {/* ── HERO ── */}
-      <section className="bg-charcoal text-white py-24 px-6 relative overflow-hidden">
-        {/* Decorative accent bar */}
-        <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-primary via-accent to-primary" />
+      <section
+        className="relative text-white py-24 px-6 overflow-hidden min-h-[600px] flex items-center"
+        style={{
+          backgroundImage: `url(${heroImage})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-black/65" />
 
-        <div className="max-w-4xl mx-auto text-center">
-          <span className="inline-block bg-primary text-white text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-6">
-            Community · Culture · Truth
-          </span>
+        {/* Accent bar */}
+        <div
+          className="absolute top-0 left-0 w-full h-1 z-10"
+          style={{
+            background: "linear-gradient(to right, #942023, #769c61, #942023)",
+          }}
+        />
 
-          <h1
-            className="text-4xl md:text-6xl font-bold leading-tight mb-6"
-            style={{ fontFamily: "'Playfair Display', serif" }}
-          >
-            The Voice of <span className="text-accent">Ekenobizi</span>
-          </h1>
+        {/* Hero content */}
+        <div className="relative z-10 max-w-4xl mx-auto text-center w-full">
+          {/* Badge */}
+          <div style={animate(0)}>
+            <span className="inline-block bg-primary text-white text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-6">
+              Community · Culture · Truth
+            </span>
+          </div>
 
-          <p className="text-gray-300 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto mb-10">
-            Real stories. Local voices. Community-driven journalism from the
-            heart of Umuahia — written by people who call Ekenobizi home.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              to="/stories"
-              className="bg-primary hover:bg-red-800 text-white font-semibold px-8 py-3.5 rounded-full transition-all duration-200 hover:scale-105"
+          {/* Heading */}
+          <div style={animate(150)}>
+            <h1
+              className="text-4xl md:text-6xl font-bold leading-tight mb-6"
+              style={{ fontFamily: "'Playfair Display', serif" }}
             >
-              Read Stories
-            </Link>
-            <Link
-              to="/signup"
-              className="border border-accent text-accent hover:bg-accent hover:text-white font-semibold px-8 py-3.5 rounded-full transition-all duration-200"
-            >
-              Share Your Story
-            </Link>
+              The Voice of <span className="text-accent">Ekenobizi</span>
+            </h1>
+          </div>
+
+          {/* Tagline */}
+          <div style={animate(300)}>
+            <p className="text-gray-200 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto mb-10">
+              Real stories. Local voices. Community-driven journalism from the
+              heart of Umuahia — written by people who call Ekenobizi home.
+            </p>
+          </div>
+
+          {/* Buttons */}
+          <div style={animate(450)}>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link
+                to="/stories"
+                className="bg-primary hover:bg-red-800 text-white font-semibold px-8 py-3.5 rounded-full transition-all duration-200 hover:scale-105"
+              >
+                Read Stories
+              </Link>
+              <Link
+                to="/signup"
+                className="border border-accent text-accent hover:bg-accent hover:text-white font-semibold px-8 py-3.5 rounded-full transition-all duration-200"
+              >
+                Share Your Story
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -120,10 +157,9 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* Featured post (first card — bigger) */}
+        {/* Featured post */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <article className="lg:col-span-2 bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 group">
-            {/* Color placeholder for image */}
             <div className="h-64 bg-linear-to-br from-primary to-red-900 flex items-center justify-center">
               <span
                 className="text-white/20 text-6xl font-bold"
