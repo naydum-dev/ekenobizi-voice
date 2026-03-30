@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "../services/supabase";
+import { useAuth } from "../contexts/AuthContext";
 import Comment from "../components/Comment";
 
 export default function PostPage() {
   const { id } = useParams();
+  const { user } = useAuth();
+
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -12,6 +15,10 @@ export default function PostPage() {
   const [comments, setComments] = useState([]);
   const [commentsLoading, setCommentsLoading] = useState(true);
   const [commentsError, setCommentsError] = useState(null);
+
+  const [newComment, setNewComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
   useEffect(() => {
     async function fetchPost() {
@@ -34,23 +41,45 @@ export default function PostPage() {
   }, [id]);
 
   useEffect(() => {
-    async function fetchComments() {
-      const { data, error } = await supabase
-        .from("comments")
-        .select("*, profiles(username)")
-        .eq("post_id", id)
-        .order("created_at", { ascending: true });
-
-      if (error) {
-        setCommentsError("Could not load comments.");
-      } else {
-        setComments(data);
-      }
-      setCommentsLoading(false);
-    }
-
     fetchComments();
   }, [id]);
+
+  async function fetchComments() {
+    const { data, error } = await supabase
+      .from("comments")
+      .select("*, profiles(username)")
+      .eq("post_id", id)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      setCommentsError("Could not load comments.");
+    } else {
+      setComments(data);
+    }
+    setCommentsLoading(false);
+  }
+
+  async function handleSubmitComment() {
+    if (!newComment.trim()) return;
+
+    setSubmitting(true);
+    setSubmitError(null);
+
+    const { error } = await supabase.from("comments").insert({
+      post_id: id,
+      author_id: user.id,
+      content: newComment.trim(),
+    });
+
+    if (error) {
+      setSubmitError("Could not post comment. Please try again.");
+    } else {
+      setNewComment("");
+      await fetchComments();
+    }
+
+    setSubmitting(false);
+  }
 
   if (loading)
     return (
@@ -151,10 +180,50 @@ export default function PostPage() {
           )}
 
           {!commentsLoading && !commentsError && comments.length > 0 && (
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-6 mb-8">
               {comments.map((comment) => (
                 <Comment key={comment.id} comment={comment} />
               ))}
+            </div>
+          )}
+
+          {/* ── COMMENT FORM ── */}
+          {user ? (
+            <div className="border-t border-gray-100 pt-6 mt-6">
+              <h3 className="text-sm font-semibold text-charcoal mb-3">
+                Leave a comment
+              </h3>
+              <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Share your thoughts..."
+                rows={4}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-charcoal placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              />
+              {submitError && (
+                <p className="text-red-400 text-xs mt-2">{submitError}</p>
+              )}
+              <div className="flex justify-end mt-3">
+                <button
+                  onClick={handleSubmitComment}
+                  disabled={submitting || !newComment.trim()}
+                  className="bg-primary hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold px-6 py-2 rounded-full transition-all duration-200"
+                >
+                  {submitting ? "Posting..." : "Post Comment"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="border-t border-gray-100 pt-6 mt-6 text-center">
+              <p className="text-gray-500 text-sm">
+                <Link
+                  to="/login"
+                  className="text-primary font-semibold hover:underline"
+                >
+                  Sign in
+                </Link>{" "}
+                to join the conversation.
+              </p>
             </div>
           )}
         </div>
