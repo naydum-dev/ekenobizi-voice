@@ -104,6 +104,17 @@ export default function PostPage() {
     day: "numeric",
   });
 
+  async function handleDeleteComment(commentId) {
+    const { error } = await supabase
+      .from("comments")
+      .delete()
+      .eq("id", commentId);
+
+    if (!error) {
+      await fetchComments();
+    }
+  }
+
   return (
     <div className="min-h-screen bg-cream">
       {/* ── HERO ── */}
@@ -182,7 +193,12 @@ export default function PostPage() {
           {!commentsLoading && !commentsError && comments.length > 0 && (
             <div className="flex flex-col gap-6 mb-8">
               {comments.map((comment) => (
-                <Comment key={comment.id} comment={comment} />
+                <Comment
+                  key={comment.id}
+                  comment={comment}
+                  currentUserId={user?.id}
+                  onDelete={handleDeleteComment}
+                />
               ))}
             </div>
           )}
