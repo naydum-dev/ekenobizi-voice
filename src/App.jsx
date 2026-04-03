@@ -11,6 +11,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Home from "./pages/Home";
 import About from "./pages/About";
 import PostPage from "./pages/PostPage";
+import CreatePost from "./pages/CreatePost";
 
 // Placeholder for pages we haven't built yet
 const ComingSoon = ({ page }) => (
@@ -47,10 +48,10 @@ export default function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/post/:id" element={<PostPage />} />
             <Route
-              path="/profile"
+              path="/create-post"
               element={
                 <ProtectedRoute>
-                  <Profile />
+                  <CreatePost />
                 </ProtectedRoute>
               }
             />

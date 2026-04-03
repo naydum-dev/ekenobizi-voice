@@ -3,7 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import logo from "../assets/ekenobizi_voice_logo.png";
 
 export default function Header() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 bg-charcoal text-white">
@@ -76,6 +76,18 @@ export default function Header() {
           >
             About
           </NavLink>
+          {isAdmin && (
+            <NavLink
+              to="/create-post"
+              className={({ isActive }) =>
+                isActive
+                  ? "text-accent border-b-2 border-accent pb-0.5"
+                  : "hover:text-accent transition-colors"
+              }
+            >
+              ✍️ Write
+            </NavLink>
+          )}
         </nav>
       </div>
     </header>
