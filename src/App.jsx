@@ -9,6 +9,7 @@ import Profile from "./pages/Profile";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Home from "./pages/Home";
+import About from "./pages/About";
 import PostPage from "./pages/PostPage";
 
 // Placeholder for pages we haven't built yet
@@ -39,7 +40,7 @@ export default function App() {
               path="/community"
               element={<ComingSoon page="Community" />}
             />
-            <Route path="/about" element={<ComingSoon page="About" />} />
+            <Route path="/about" element={<About />} />
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
