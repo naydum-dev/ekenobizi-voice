@@ -115,6 +115,21 @@ export default function PostPage() {
     }
   }
 
+  async function handleEditComment(commentId, newContent) {
+    const { error } = await supabase
+      .from("comments")
+      .update({ content: newContent })
+      .eq("id", commentId);
+
+    if (!error) {
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === commentId ? { ...c, content: newContent } : c,
+        ),
+      );
+    }
+  }
+
   return (
     <div className="min-h-screen bg-cream">
       {/* ── HERO ── */}
@@ -198,6 +213,7 @@ export default function PostPage() {
                   comment={comment}
                   currentUserId={user?.id}
                   onDelete={handleDeleteComment}
+                  onEdit={handleEditComment}
                 />
               ))}
             </div>

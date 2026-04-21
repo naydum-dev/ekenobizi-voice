@@ -21,8 +21,9 @@
 
 - **Heading Font:** Playfair Display (Google Fonts) — `font-playfair`
 - **Body Font:** Inter (Google Fonts)
-- **Logo:** `src/assets/ekenobizi_voice_logo.png` — transparent background PNG (processed via remove.bg). Raised fist holding megaphone with olive branch. Displayed at `h-20` in Header.
-- **Hero Image:** `src/assets/hero.jpg` — real community meeting photo used as hero background on Home page.
+- **Logo:** `src/assets/ekenobizi_voice_logo.png` — transparent background PNG. Displayed at `h-20` in Header.
+- **Hero Image:** `src/assets/hero.jpg` — Home page hero background
+- **About Hero:** `src/assets/about-hero.jpeg` — About page hero background
 
 ---
 
@@ -34,7 +35,8 @@ ekenobizi-voice/
 ├── src/
 │   ├── assets/
 │   │   ├── ekenobizi_voice_logo.png
-│   │   └── hero.jpg
+│   │   ├── hero.jpg
+│   │   └── about-hero.jpeg
 │   ├── components/
 │   │   ├── Header.jsx
 │   │   ├── Footer.jsx
@@ -51,6 +53,7 @@ ekenobizi-voice/
 │   │   ├── Login.jsx
 │   │   ├── Profile.jsx
 │   │   ├── PostPage.jsx
+│   │   ├── CreatePost.jsx
 │   │   ├── ForgotPassword.jsx
 │   │   └── ResetPassword.jsx
 │   ├── services/
@@ -59,9 +62,10 @@ ekenobizi-voice/
 │   ├── utils/
 │   ├── App.jsx
 │   └── index.css
+├── CONTEXT.md
 ├── index.html
 ├── vite.config.js
-├── .env.local          ← API keys (not tracked by Git)
+├── .env.local
 ├── .gitignore
 └── package.json
 ```
@@ -70,20 +74,19 @@ ekenobizi-voice/
 
 ## DEPENDENCIES INSTALLED
 
-```json
-{
-  "tailwindcss": "latest",
-  "@tailwindcss/vite": "latest",
-  "react-router-dom": "latest",
-  "@supabase/supabase-js": "latest"
-}
+```
+tailwindcss: latest
+@tailwindcss/vite: latest
+react-router-dom: latest
+@supabase/supabase-js: latest
+react-icons: latest
 ```
 
 ---
 
 ## KEY FILE CONTENTS
 
-### `vite.config.js`
+### vite.config.js
 
 ```js
 import { defineConfig } from "vite";
@@ -95,7 +98,7 @@ export default defineConfig({
 });
 ```
 
-### `src/index.css`
+### src/index.css
 
 ```css
 @import "tailwindcss";
@@ -120,16 +123,7 @@ export default defineConfig({
 }
 ```
 
-### `index.html` (Google Fonts)
-
-```html
-<link
-  href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@400;500;600&display=swap"
-  rel="stylesheet"
-/>
-```
-
-### `src/services/supabase.js`
+### src/services/supabase.js
 
 ```js
 import { createClient } from "@supabase/supabase-js";
@@ -140,7 +134,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 ```
 
-### `.env.local`
+### .env.local
 
 ```
 VITE_SUPABASE_URL=https://your_project_url.supabase.co
@@ -169,6 +163,7 @@ profiles
 ├── username    text NOT NULL
 ├── full_name   text (nullable)
 ├── avatar_url  text (nullable)
+├── is_admin    boolean DEFAULT false
 └── created_at  timestamptz DEFAULT now()
 
 -- Blog posts
@@ -201,13 +196,13 @@ posts      ──< comments    (one post → many comments)
 profiles   ──< comments    (one profile → many comments)
 ```
 
-All foreign keys use **ON DELETE CASCADE** — deleting a user removes their profile, posts, and comments automatically.
+All foreign keys use ON DELETE CASCADE — deleting a user removes their profile, posts, and comments automatically.
 
 ---
 
 ## DATABASE TRIGGER
 
-Auto-creates a `profiles` row whenever a new user signs up via Supabase Auth:
+Auto-creates a profiles row whenever a new user signs up via Supabase Auth:
 
 ```sql
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -233,253 +228,130 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
 ## RLS POLICIES
 
 ```sql
--- Anyone can read published posts
-CREATE POLICY "Public can read published posts"
-  ON posts FOR SELECT
-  USING (published = true);
-
--- Anyone can read profiles
+-- PROFILES
 CREATE POLICY "Public can read profiles"
-  ON profiles FOR SELECT
-  USING (true);
+  ON profiles FOR SELECT USING (true);
 
--- Users can update their own profile
 CREATE POLICY "Users can update own profile"
-  ON profiles FOR UPDATE
-  USING (auth.uid() = id);
+  ON profiles FOR UPDATE USING (auth.uid() = id);
 
--- Trigger function can insert profiles on signup
 CREATE POLICY "Service can insert profiles"
-  ON profiles FOR INSERT
-  WITH CHECK (true);
+  ON profiles FOR INSERT WITH CHECK (true);
 
--- Anyone can read comments
+-- POSTS
+CREATE POLICY "Public can read published posts"
+  ON posts FOR SELECT USING (published = true);
+
+CREATE POLICY "Admins can insert posts"
+  ON posts FOR INSERT
+  WITH CHECK (auth.uid() IN (
+    SELECT id FROM profiles WHERE is_admin = true
+  ));
+
+CREATE POLICY "Admins can update posts"
+  ON posts FOR UPDATE
+  USING (auth.uid() IN (
+    SELECT id FROM profiles WHERE is_admin = true
+  ));
+
+CREATE POLICY "Admins can delete posts"
+  ON posts FOR DELETE
+  USING (auth.uid() IN (
+    SELECT id FROM profiles WHERE is_admin = true
+  ));
+
+-- COMMENTS
 CREATE POLICY "Public can read comments"
-  ON comments FOR SELECT
-  USING (true);
+  ON comments FOR SELECT USING (true);
 
--- Authenticated users can insert their own comments
 CREATE POLICY "Authenticated users can insert comments"
   ON comments FOR INSERT
   WITH CHECK (auth.uid() = author_id);
+
+CREATE POLICY "Users can delete own comments"
+  ON comments FOR DELETE
+  USING (auth.uid() = author_id);
 ```
 
 ---
 
-## ROUTING (`src/App.jsx`)
+## ROUTING (src/App.jsx)
 
 ```jsx
-import { AuthProvider } from "./contexts/AuthContext";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Header from "./components/Header";
-import Footer from "./components/Footer";
-import Home from "./pages/Home";
-import Register from "./pages/Register";
-import Login from "./pages/Login";
-import About from "./pages/About";
-import Profile from "./pages/Profile";
-import PostPage from "./pages/PostPage";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import ProtectedRoute from "./components/ProtectedRoute";
-
-export default function App() {
-  return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Header />
-        <main>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/post/:id" element={<PostPage />} />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
-        </main>
-        <Footer />
-      </BrowserRouter>
-    </AuthProvider>
-  );
-}
+<Routes>
+  <Route path="/" element={<Home />} />
+  <Route path="/about" element={<About />} />
+  <Route path="/register" element={<Register />} />
+  <Route path="/login" element={<Login />} />
+  <Route path="/forgot-password" element={<ForgotPassword />} />
+  <Route path="/reset-password" element={<ResetPassword />} />
+  <Route path="/post/:id" element={<PostPage />} />
+  <Route
+    path="/profile"
+    element={
+      <ProtectedRoute>
+        <Profile />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/create-post"
+    element={
+      <ProtectedRoute>
+        <CreatePost />
+      </ProtectedRoute>
+    }
+  />
+</Routes>
 ```
 
 ---
 
-## AUTH CONTEXT (`src/contexts/AuthContext.jsx`)
+## AUTH CONTEXT (src/contexts/AuthContext.jsx)
 
-```jsx
-import { createContext, useContext, useEffect, useState } from "react";
-import { supabase } from "../services/supabase";
-
-const AuthContext = createContext(null);
-
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const value = {
-    user,
-    loading,
-    signOut: () => supabase.auth.signOut(),
-  };
-
-  return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
-    </AuthContext.Provider>
-  );
-}
-
-export function useAuth() {
-  return useContext(AuthContext);
-}
-```
+- Fetches session on load via `getSession()`
+- Listens for auth changes via `onAuthStateChange()`
+- Fetches `profiles` row after login — includes `is_admin`
+- Exposes: `user`, `profile`, `isAdmin`, `loading`, `signOut`
 
 ---
 
-## PROTECTED ROUTE (`src/components/ProtectedRoute.jsx`)
+## ADMIN SYSTEM
 
-```jsx
-import { Navigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-
-export default function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth();
-  if (loading) return null;
-  if (!user) return <Navigate to="/login" replace />;
-  return children;
-}
-```
-
----
-
-## COMMENT COMPONENT (`src/components/Comment.jsx`)
-
-```jsx
-export default function Comment({ comment }) {
-  const date = new Date(comment.created_at).toLocaleDateString("en-NG", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const initial = comment.profiles.username[0].toUpperCase();
-
-  return (
-    <div className="flex gap-4">
-      <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-        {initial}
-      </div>
-      <div className="flex-1">
-        <div className="flex items-baseline gap-2 mb-1">
-          <span className="font-semibold text-charcoal text-sm">
-            @{comment.profiles.username}
-          </span>
-          <span className="text-gray-400 text-xs">{date}</span>
-        </div>
-        <p className="text-gray-700 text-sm leading-relaxed">
-          {comment.content}
-        </p>
-      </div>
-    </div>
-  );
-}
-```
-
----
-
-## HEADER BEHAVIOUR
-
-- **Two-row layout:** Logo + auth buttons on top row, nav links (Home, About) on bottom row
-- **Logged out:** Shows "Sign In" link + "Join Community" button → `/register`
-- **Logged in:** Shows `@username` → `/profile` + "Sign Out" button
-- Auth state read from `useAuth()` context
-- Responsive — nav links sit below logo on all screen sizes so nothing gets squished
-
----
-
-## AUTHENTICATION FLOW
-
-### Registration
-
-1. User fills out form (full name, username, email, password, confirm password)
-2. Client-side validation runs
-3. `supabase.auth.signUp()` called with email, password, and metadata
-4. Supabase sends confirmation email
-5. Database trigger fires → creates `profiles` row automatically
-6. User sees "Check Your Email" success screen
-
-### Login
-
-1. `supabase.auth.signInWithPassword()` called
-2. On success → redirected to `/`
-3. `onAuthStateChange` fires → `AuthContext` updates `user` state globally
-4. Session persists on page refresh
-
-### Logout
-
-1. `supabase.auth.signOut()` called via `signOut` from `useAuth()`
-2. `user` set to `null`, header reverts to logged-out state
-
-### Forgot Password
-
-1. `supabase.auth.resetPasswordForEmail()` with `redirectTo: http://localhost:5173/reset-password`
-2. User clicks link → `/reset-password`
-3. `supabase.auth.updateUser({ password })` called
-4. Redirected to `/login` after 2 seconds
+- `is_admin` boolean column on `profiles` table (DEFAULT false)
+- Set manually via SQL: `UPDATE profiles SET is_admin = true WHERE username = 'chinedum_chijioke01'`
+- `isAdmin` exposed from `AuthContext` — consumed by Header and CreatePost
+- Write link in nav only visible to admins
+- CreatePost page renders permission error for non-admins
+- RLS policies on posts table restrict INSERT/UPDATE/DELETE to admins only
 
 ---
 
 ## PAGES BUILT
 
-| Page            | Path               | File                           | Status                     |
-| --------------- | ------------------ | ------------------------------ | -------------------------- |
-| Home            | `/`                | `src/pages/Home.jsx`           | ✅ Hero image + animations |
-| Post            | `/post/:id`        | `src/pages/PostPage.jsx`       | ✅ Comments working        |
-| About           | `/about`           | `src/pages/About.jsx`          | 🔲 Empty placeholder       |
-| Register        | `/register`        | `src/pages/Register.jsx`       | ✅ Built & wired           |
-| Login           | `/login`           | `src/pages/Login.jsx`          | ✅ Built & wired           |
-| Profile         | `/profile`         | `src/pages/Profile.jsx`        | ✅ Built & wired           |
-| Forgot Password | `/forgot-password` | `src/pages/ForgotPassword.jsx` | ✅ Built & wired           |
-| Reset Password  | `/reset-password`  | `src/pages/ResetPassword.jsx`  | ✅ Built & wired           |
+| Page            | Path             | File                         | Status                         |
+| --------------- | ---------------- | ---------------------------- | ------------------------------ |
+| Home            | /                | src/pages/Home.jsx           | Done - Hero image + animations |
+| Post            | /post/:id        | src/pages/PostPage.jsx       | Done - Comments working        |
+| About           | /about           | src/pages/About.jsx          | Done - Full community page     |
+| Create Post     | /create-post     | src/pages/CreatePost.jsx     | Done - Admin only              |
+| Register        | /register        | src/pages/Register.jsx       | Done - Built and wired         |
+| Login           | /login           | src/pages/Login.jsx          | Done - Built and wired         |
+| Profile         | /profile         | src/pages/Profile.jsx        | Done - Built and wired         |
+| Forgot Password | /forgot-password | src/pages/ForgotPassword.jsx | Done - Built and wired         |
+| Reset Password  | /reset-password  | src/pages/ResetPassword.jsx  | Done - Built and wired         |
 
 ---
 
 ## COMPONENTS BUILT
 
-| Component      | File                                | Purpose                            |
-| -------------- | ----------------------------------- | ---------------------------------- |
-| Header         | `src/components/Header.jsx`         | Two-row responsive nav, auth-aware |
-| Footer         | `src/components/Footer.jsx`         | 3-column, dynamic copyright year   |
-| PostCard       | `src/components/PostCard.jsx`       | Reusable post preview card         |
-| Comment        | `src/components/Comment.jsx`        | Reusable single comment display    |
-| ProtectedRoute | `src/components/ProtectedRoute.jsx` | Guards private routes              |
+| Component      | File                              | Purpose                                   |
+| -------------- | --------------------------------- | ----------------------------------------- |
+| Header         | src/components/Header.jsx         | Two-row nav, auth-aware, admin Write link |
+| Footer         | src/components/Footer.jsx         | 3-column, dynamic copyright year          |
+| PostCard       | src/components/PostCard.jsx       | Reusable post preview card                |
+| Comment        | src/components/Comment.jsx        | Single comment with delete button         |
+| ProtectedRoute | src/components/ProtectedRoute.jsx | Guards private routes                     |
 
 ---
 
@@ -499,6 +371,10 @@ Day 8: Display comments on post page
 Day 8: Comment form — authenticated users can post comments
 Day 8: Add slide-up animations and hero background image to landing page
 Day 8: Fix header layout on small screens
+Day 9: Add About page with community info, hero image and village icons
+Day 9: Add delete own comments feature with RLS policy
+Day 9: Add Create Post page with admin-only access and RLS policies
+Day 9: Update CONTEXT.md to reflect Day 9 progress
 ```
 
 ---
@@ -515,75 +391,87 @@ Day 8: Fix header layout on small screens
 
 ### Day 3
 
-- Tailwind v4 `@theme` block, React Router, NavLink active state, component composition
+- Tailwind v4 @theme block, React Router, NavLink active state, component composition
 
 ### Day 4
 
-- Supabase Auth (`signUp`), controlled components, form validation, async/await, DB triggers, RLS
+- Supabase Auth (signUp), controlled components, form validation, async/await, DB triggers, RLS
 
 ### Day 5
 
-- React Context API, `useContext`, custom hooks (`useAuth`), session persistence, protected routes
+- React Context API, useContext, custom hooks (useAuth), session persistence, protected routes
 
 ### Day 6
 
-- Fetching/updating user data, edit/display mode toggling, multi-page auth flows, `useNavigate`
+- Fetching/updating user data, edit/display mode toggling, multi-page auth flows, useNavigate
 
 ### Day 7
 
-- `useEffect` data fetching, three-state async pattern, Supabase joins, `useParams`, `.single()`, RLS on joined data
+- useEffect data fetching, three-state async pattern, Supabase joins, useParams, .single(), RLS on joined data
 
 ### Day 8
 
-- Multiple `useEffect` hooks for independent fetches
-- Extracting functions outside `useEffect` so they can be called from multiple places
+- Multiple useEffect hooks for independent fetches
+- Extracting functions outside useEffect so they can be called from multiple places
 - Re-fetching after a mutation to keep UI in sync
 - Conditional rendering based on auth state
 - RLS policies for SELECT and INSERT on the same table
 - Missing RLS policies fail silently — empty results, no error
-- CSS `@keyframes` animations — more reliable than toggling React state for load animations
-- `animation: slideUp 700ms ease-out both` — `both` fills start state before animation plays
-- Hero background image via inline `backgroundImage` style + dark overlay for readability
+- CSS @keyframes animations — more reliable than toggling React state for load animations
+- animation: slideUp 700ms ease-out both — both fills start state before animation plays
+- Hero background image via inline backgroundImage style + dark overlay for readability
 - Two-row header layout for responsive nav on small screens
+
+### Day 9
+
+- react-icons library for UI icons
+- RLS DELETE policy — auth.uid() = author_id pattern for own data
+- Passing functions as props (onDelete) to child components
+- is_admin boolean column pattern for role-based access control
+- Fetching profile data in AuthContext — exposing isAdmin app-wide
+- Admin-only pages — rendering permission error for non-admins
+- Supabase INSERT returning data with .select().single()
+- Separate RLS policies needed per operation: SELECT, INSERT, UPDATE, DELETE
+- git add -A flag stages all changes: new files, modified files, and deleted files
 
 ---
 
 ## CURRENT PROJECT STATE
 
-**Status:** ✅ Days 1–8 Complete
-**Dev Server:** `npm run dev` → `http://localhost:5173`
+**Status:** Days 1-9 Complete
+**Dev Server:** npm run dev → http://localhost:5173
 **Auth:** Registration + Login + Logout + Session persistence + Password reset all working
 **Profiles:** Users can view and edit their username and full name
-**Posts:** Home page displays live posts from Supabase. Single post view at `/post/:id` working.
-**Comments:** Display on post pages. Authenticated users can post. Logged-out users see "Sign in" prompt.
-**Landing Page:** Real community photo as hero background, slide-up animations on load.
-**Header:** Responsive two-row layout — works cleanly on small screens.
-**Database:** 3 tables live (profiles, posts, comments). Trigger + RLS policies active.
-**Seed Data:** 3 published posts + 2 seeded comments.
+**Posts:** Home page displays live posts from Supabase. Single post view at /post/:id working. Admin can create posts from the app.
+**Comments:** Display on post pages. Authenticated users can post. Users can delete own comments.
+**About:** Full community page with hero image, five villages, mission pillars and story sections.
+**Admin System:** is_admin flag on profiles. Write link and CreatePost page admin-only. RLS enforced.
+**Database:** 3 tables live (profiles, posts, comments). Trigger + all RLS policies active.
 
 ---
 
 ## NEXT STEPS
 
-### 📋 DAY 9 OPTIONS
+### DAY 10 OPTIONS
 
-**Option A: Delete own comments**
+**Option A: Post images**
 
-- Users can remove comments they posted
-- Delete button visible only on own comments
-- RLS delete policy on comments table
+- Supabase Storage bucket for image uploads
+- Image upload field on Create Post form
+- Display images on Home page cards and Post page
+- Update posts table with image_url column
 
-**Option B: Create Post page (Admin)**
+**Option B: Edit and Delete posts (Admin)**
 
-- Build Create Post page (protected route)
-- Rich text or markdown editor
-- Save posts to Supabase
-- Toggle published/draft status
+- Edit button on post pages for admins
+- Edit Post page pre-filled with existing data
+- Delete post with confirmation prompt
 
-**Option C: About page**
+**Option C: Draft management**
 
-- Fill in the empty placeholder
-- Community info, mission statement
+- Admin dashboard showing all posts (published + drafts)
+- Toggle published status from dashboard
+- Delete drafts
 
 ---
 
@@ -598,26 +486,30 @@ Day 8: Fix header layout on small screens
 
 **Key Decisions Made:**
 
-1. Vite with `@tailwindcss/vite` plugin (Tailwind v4 method)
-2. `@theme` block in `index.css` for custom design tokens
+1. Vite with @tailwindcss/vite plugin (Tailwind v4 method)
+2. @theme block in index.css for custom design tokens
 3. SQL Editor used for all schema changes
-4. All IDs use `uuid`
+4. All IDs use uuid
 5. ON DELETE CASCADE on all foreign keys
 6. Playfair Display for headings — editorial feel
-7. Git Bash as terminal (`touch` not `New-Item`)
+7. Git Bash as terminal (touch not New-Item)
 8. Email confirmation left enabled
-9. `AuthProvider` wraps entire app at root level
-10. `onAuthStateChange` for real-time auth sync
-11. Profile page reads from `profiles` table (source of truth)
-12. `category` and `excerpt` as proper DB columns
-13. Public RLS policy on `profiles` allows author join on post queries
+9. AuthProvider wraps entire app at root level
+10. onAuthStateChange for real-time auth sync
+11. Profile page reads from profiles table (source of truth)
+12. category and excerpt as proper DB columns
+13. Public RLS policy on profiles allows author join on post queries
 14. Home page uses featured post + sidebar layout
-15. `fetchComments` extracted outside `useEffect` so it can be called after insert
+15. fetchComments extracted outside useEffect so it can be called after insert
 16. RLS policies must be added per table — missing policies fail silently
-17. CSS `@keyframes` used for hero animations (more reliable than React state toggling)
-18. Hero image imported as JS module, set via inline `backgroundImage` style
+17. CSS @keyframes used for hero animations (more reliable than React state toggling)
+18. Hero image imported as JS module, set via inline backgroundImage style
 19. Header split into two rows for clean responsive layout on small screens
+20. is_admin boolean on profiles for role-based access control
+21. isAdmin derived in AuthContext and exposed app-wide
+22. Admin RLS policies use subquery: auth.uid() IN (SELECT id FROM profiles WHERE is_admin = true)
+23. CreatePost uses .select().single() after insert to get new post ID for redirect
 
 ---
 
-_Last Updated: Day 8 Complete — Mar 30, 2026_
+_Last Updated: Day 9 Complete — Apr 3, 2026_
