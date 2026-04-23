@@ -90,14 +90,12 @@ export default function Home() {
 
         {/* Hero content */}
         <div className="relative z-10 max-w-4xl mx-auto text-center w-full">
-          {/* Badge */}
           <div style={animate(0)}>
             <span className="inline-block bg-primary text-white text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-6">
               Community · Culture · Truth
             </span>
           </div>
 
-          {/* Heading */}
           <div style={animate(150)}>
             <h1
               className="text-4xl md:text-6xl font-bold leading-tight mb-6"
@@ -107,7 +105,6 @@ export default function Home() {
             </h1>
           </div>
 
-          {/* Tagline */}
           <div style={animate(300)}>
             <p className="text-gray-200 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto mb-10">
               Real stories. Local voices. Community-driven journalism from the
@@ -115,7 +112,6 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Buttons */}
           <div style={animate(450)}>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
@@ -157,17 +153,27 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* Featured post */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* ── Featured post (first post) ── */}
           <article className="lg:col-span-2 bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 group">
-            <div className="h-64 bg-linear-to-br from-primary to-red-900 flex items-center justify-center">
-              <span
-                className="text-white/20 text-6xl font-bold"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
-                EV
-              </span>
-            </div>
+            {/* Image or placeholder */}
+            {posts[0].image_url ? (
+              <img
+                src={posts[0].image_url}
+                alt={posts[0].title}
+                className="w-full h-64 object-cover"
+              />
+            ) : (
+              <div className="h-64 bg-linear-to-br from-primary to-red-900 flex items-center justify-center">
+                <span
+                  className="text-white/20 text-6xl font-bold"
+                  style={{ fontFamily: "'Playfair Display', serif" }}
+                >
+                  EV
+                </span>
+              </div>
+            )}
+
             <div className="p-8">
               <div className="flex items-center gap-3 mb-4">
                 <span
@@ -213,56 +219,70 @@ export default function Home() {
             </div>
           </article>
 
-          {/* Sidebar posts */}
+          {/* ── Sidebar posts ── */}
           <div className="flex flex-col gap-6">
             {posts.slice(1).map((post) => (
               <article
                 key={post.id}
-                className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow duration-300 group flex flex-col justify-between"
+                className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 group flex flex-col"
               >
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <span
-                      className={`text-xs font-bold px-3 py-1 rounded-full ${categoryColors[post.category]}`}
+                {/* Image — only if available */}
+                {post.image_url && (
+                  <img
+                    src={post.image_url}
+                    alt={post.title}
+                    className="w-full h-36 object-cover"
+                  />
+                )}
+
+                <div className="p-6 flex flex-col flex-1 justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span
+                        className={`text-xs font-bold px-3 py-1 rounded-full ${categoryColors[post.category]}`}
+                      >
+                        {post.category}
+                      </span>
+                      <span className="text-gray-400 text-xs">3 min read</span>
+                    </div>
+                    <h3
+                      className="text-lg font-bold text-charcoal mb-2 group-hover:text-primary transition-colors leading-snug"
+                      style={{ fontFamily: "'Playfair Display', serif" }}
                     >
-                      {post.category}
-                    </span>
-                    <span className="text-gray-400 text-xs">3 min read</span>
+                      {post.title}
+                    </h3>
+                    <p className="text-gray-500 text-sm leading-relaxed line-clamp-3">
+                      {post.excerpt}
+                    </p>
                   </div>
-                  <h3
-                    className="text-lg font-bold text-charcoal mb-2 group-hover:text-primary transition-colors leading-snug"
-                    style={{ fontFamily: "'Playfair Display', serif" }}
-                  >
-                    {post.title}
-                  </h3>
-                  <p className="text-gray-500 text-sm leading-relaxed line-clamp-3">
-                    {post.excerpt}
-                  </p>
-                </div>
-                <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold">
-                      {post.profiles.username[0].toUpperCase()}
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold">
+                        {post.profiles.username[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-charcoal">
+                          {post.profiles.username}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {new Date(post.created_at).toLocaleDateString(
+                            "en-NG",
+                            {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            },
+                          )}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-semibold text-charcoal">
-                        {post.profiles.username}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        {new Date(post.created_at).toLocaleDateString("en-NG", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
-                      </p>
-                    </div>
+                    <Link
+                      to={`/post/${post.id}`}
+                      className="text-primary text-xs font-semibold hover:underline"
+                    >
+                      Read →
+                    </Link>
                   </div>
-                  <Link
-                    to={`/post/${post.id}`}
-                    className="text-primary text-xs font-semibold hover:underline"
-                  >
-                    Read →
-                  </Link>
                 </div>
               </article>
             ))}

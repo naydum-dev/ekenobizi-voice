@@ -13,7 +13,6 @@ import About from "./pages/About";
 import PostPage from "./pages/PostPage";
 import CreatePost from "./pages/CreatePost";
 
-// Placeholder for pages we haven't built yet
 const ComingSoon = ({ page }) => (
   <div className="min-h-screen bg-cream flex items-center justify-center">
     <div className="text-center">
@@ -47,6 +46,14 @@ export default function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/register" element={<Register />} />
             <Route path="/post/:id" element={<PostPage />} />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/create-post"
               element={

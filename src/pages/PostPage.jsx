@@ -81,29 +81,6 @@ export default function PostPage() {
     setSubmitting(false);
   }
 
-  if (loading)
-    return (
-      <div className="min-h-screen bg-cream flex items-center justify-center">
-        <p className="text-gray-500 text-lg">Loading story...</p>
-      </div>
-    );
-
-  if (error)
-    return (
-      <div className="min-h-screen bg-cream flex items-center justify-center flex-col gap-4">
-        <p className="text-red-500 text-lg">{error}</p>
-        <Link to="/" className="text-primary font-semibold hover:underline">
-          ← Back to Home
-        </Link>
-      </div>
-    );
-
-  const date = new Date(post.created_at).toLocaleDateString("en-NG", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
   async function handleDeleteComment(commentId) {
     const { error } = await supabase
       .from("comments")
@@ -129,6 +106,29 @@ export default function PostPage() {
       );
     }
   }
+
+  if (loading)
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center">
+        <p className="text-gray-500 text-lg">Loading story...</p>
+      </div>
+    );
+
+  if (error)
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center flex-col gap-4">
+        <p className="text-red-500 text-lg">{error}</p>
+        <Link to="/" className="text-primary font-semibold hover:underline">
+          ← Back to Home
+        </Link>
+      </div>
+    );
+
+  const date = new Date(post.created_at).toLocaleDateString("en-NG", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   return (
     <div className="min-h-screen bg-cream">
@@ -165,6 +165,17 @@ export default function PostPage() {
           </div>
         </div>
       </div>
+
+      {/* ── NEW: Cover Image ── */}
+      {post.image_url && (
+        <div className="max-w-3xl mx-auto px-6 pt-8">
+          <img
+            src={post.image_url}
+            alt={post.title}
+            className="w-full max-h-96 object-cover rounded-2xl shadow-sm"
+          />
+        </div>
+      )}
 
       {/* ── CONTENT ── */}
       <div className="max-w-3xl mx-auto px-6 py-12">

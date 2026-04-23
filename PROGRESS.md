@@ -268,6 +268,10 @@ CREATE POLICY "Authenticated users can insert comments"
   ON comments FOR INSERT
   WITH CHECK (auth.uid() = author_id);
 
+CREATE POLICY "Users can update own comments"
+  ON comments FOR UPDATE
+  USING (auth.uid() = author_id);
+
 CREATE POLICY "Users can delete own comments"
   ON comments FOR DELETE
   USING (auth.uid() = author_id);
@@ -345,13 +349,13 @@ CREATE POLICY "Users can delete own comments"
 
 ## COMPONENTS BUILT
 
-| Component      | File                              | Purpose                                   |
-| -------------- | --------------------------------- | ----------------------------------------- |
-| Header         | src/components/Header.jsx         | Two-row nav, auth-aware, admin Write link |
-| Footer         | src/components/Footer.jsx         | 3-column, dynamic copyright year          |
-| PostCard       | src/components/PostCard.jsx       | Reusable post preview card                |
-| Comment        | src/components/Comment.jsx        | Single comment with delete button         |
-| ProtectedRoute | src/components/ProtectedRoute.jsx | Guards private routes                     |
+| Component      | File                              | Purpose                                      |
+| -------------- | --------------------------------- | -------------------------------------------- |
+| Header         | src/components/Header.jsx         | Two-row nav, auth-aware, admin Write link    |
+| Footer         | src/components/Footer.jsx         | 3-column, dynamic copyright year             |
+| PostCard       | src/components/PostCard.jsx       | Reusable post preview card                   |
+| Comment        | src/components/Comment.jsx        | Single comment with edit/delete (owner only) |
+| ProtectedRoute | src/components/ProtectedRoute.jsx | Guards private routes                        |
 
 ---
 
@@ -375,6 +379,7 @@ Day 9: Add About page with community info, hero image and village icons
 Day 9: Add delete own comments feature with RLS policy
 Day 9: Add Create Post page with admin-only access and RLS policies
 Day 9: Update CONTEXT.md to reflect Day 9 progress
+Day 10: Comment edit functionality with confirmation on delete
 ```
 
 ---
@@ -432,18 +437,29 @@ Day 9: Update CONTEXT.md to reflect Day 9 progress
 - Admin-only pages — rendering permission error for non-admins
 - Supabase INSERT returning data with .select().single()
 - Separate RLS policies needed per operation: SELECT, INSERT, UPDATE, DELETE
-- git add -A flag stages all changes: new files, modified files, and deleted files
+- git add -A flag stages all changes across the entire repo regardless of current folder location
+
+### Day 10
+
+- Boolean flag pattern for toggling between display mode and edit mode (`isEditing`)
+- Local state for in-progress edits (`editText`) — keeps textarea value independent of saved data
+- Updating a single item in state with `.map()` — no full re-fetch needed after a mutation
+- `window.confirm()` for simple confirmation dialogs — native, zero extra code
+- RLS UPDATE policy — same `auth.uid() = author_id` pattern as DELETE
+- Always add the RLS policy before building the UI — missing policies fail silently
+- Props as a communication contract — component calls `onEdit(id, text)`, parent owns the Supabase logic
+- `git add -A` vs `git add .` — `-A` stages all changes repo-wide, `.` stages from current folder down
 
 ---
 
 ## CURRENT PROJECT STATE
 
-**Status:** Days 1-9 Complete
+**Status:** Days 1-10 Complete
 **Dev Server:** npm run dev → http://localhost:5173
 **Auth:** Registration + Login + Logout + Session persistence + Password reset all working
 **Profiles:** Users can view and edit their username and full name
 **Posts:** Home page displays live posts from Supabase. Single post view at /post/:id working. Admin can create posts from the app.
-**Comments:** Display on post pages. Authenticated users can post. Users can delete own comments.
+**Comments:** Display on post pages. Authenticated users can post. Users can edit and delete their own comments. Confirmation dialog before delete.
 **About:** Full community page with hero image, five villages, mission pillars and story sections.
 **Admin System:** is_admin flag on profiles. Write link and CreatePost page admin-only. RLS enforced.
 **Database:** 3 tables live (profiles, posts, comments). Trigger + all RLS policies active.
@@ -452,7 +468,7 @@ Day 9: Update CONTEXT.md to reflect Day 9 progress
 
 ## NEXT STEPS
 
-### DAY 10 OPTIONS
+### DAY 11 OPTIONS
 
 **Option A: Post images**
 
@@ -509,7 +525,10 @@ Day 9: Update CONTEXT.md to reflect Day 9 progress
 21. isAdmin derived in AuthContext and exposed app-wide
 22. Admin RLS policies use subquery: auth.uid() IN (SELECT id FROM profiles WHERE is_admin = true)
 23. CreatePost uses .select().single() after insert to get new post ID for redirect
+24. Comment edit/delete buttons only render when currentUserId === comment.author_id
+25. Local state update with .map() after edit — avoids unnecessary re-fetch
+26. window.confirm() used for delete confirmation — native dialog, no extra dependencies
 
 ---
 
-_Last Updated: Day 9 Complete — Apr 3, 2026_
+_Last Updated: Day 10 Complete — Apr 21, 2026_

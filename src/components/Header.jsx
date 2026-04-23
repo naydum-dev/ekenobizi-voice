@@ -3,7 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import logo from "../assets/ekenobizi_voice_logo.png";
 
 export default function Header() {
-  const { user, signOut, isAdmin } = useAuth();
+  const { user, profile, signOut, isAdmin } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 bg-charcoal text-white">
@@ -26,7 +26,7 @@ export default function Header() {
                   to="/profile"
                   className="text-sm font-semibold text-white hover:text-accent transition-colors"
                 >
-                  @{user.user_metadata?.username || user.email}
+                  @{profile?.username || user.email}
                 </Link>
                 <button
                   onClick={signOut}

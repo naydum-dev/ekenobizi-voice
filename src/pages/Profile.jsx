@@ -3,7 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../services/supabase";
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -52,6 +52,7 @@ export default function Profile() {
       });
     } else {
       setProfile((prev) => ({ ...prev, username, full_name: fullName }));
+      await refreshProfile(); // ── NEW ──
       setSaveMessage({
         type: "success",
         text: "Profile updated successfully!",

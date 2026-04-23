@@ -17,6 +17,11 @@ export function AuthProvider({ children }) {
     setProfile(data);
   }
 
+  // ── NEW: callable from any component after a profile update ──
+  async function refreshProfile() {
+    if (user) await fetchProfile(user.id);
+  }
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       const sessionUser = session?.user ?? null;
@@ -43,6 +48,7 @@ export function AuthProvider({ children }) {
     isAdmin: profile?.is_admin === true,
     loading,
     signOut: () => supabase.auth.signOut(),
+    refreshProfile,
   };
 
   return (

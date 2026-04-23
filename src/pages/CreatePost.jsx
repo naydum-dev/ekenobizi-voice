@@ -17,6 +17,10 @@ export default function CreatePost() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
+  // ── NEW: image state ──
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center">
@@ -25,6 +29,21 @@ export default function CreatePost() {
         </p>
       </div>
     );
+  }
+
+  // ── NEW: when user picks a file ──
+  function handleImageChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  }
+
+  // ── NEW: remove selected image ──
+  function handleRemoveImage() {
+    setImageFile(null);
+    setImagePreview(null);
   }
 
   async function handleSubmit() {
@@ -36,6 +55,31 @@ export default function CreatePost() {
     setSubmitting(true);
     setError(null);
 
+    // ── NEW: upload image first if one was selected ──
+    let image_url = null;
+
+    if (imageFile) {
+      const fileExt = imageFile.name.split(".").pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("post-images")
+        .upload(fileName, imageFile);
+
+      if (uploadError) {
+        setError("Image upload failed. Please try again.");
+        setSubmitting(false);
+        return;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from("post-images")
+        .getPublicUrl(fileName);
+
+      image_url = urlData.publicUrl;
+    }
+
+    // ── insert post with image_url ──
     const { data, error } = await supabase
       .from("posts")
       .insert({
@@ -45,6 +89,7 @@ export default function CreatePost() {
         category,
         published,
         author_id: user.id,
+        image_url,
       })
       .select()
       .single();
@@ -143,6 +188,45 @@ export default function CreatePost() {
               rows={14}
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-charcoal placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
             />
+          </div>
+
+          {/* ── NEW: Cover Image ── */}
+          <div>
+            <label className="block text-sm font-semibold text-charcoal mb-2">
+              Cover Image{" "}
+              <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+
+            {!imagePreview ? (
+              <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-primary transition-colors">
+                <span className="text-gray-400 text-sm">
+                  Click to upload an image
+                </span>
+                <span className="text-gray-300 text-xs mt-1">
+                  JPG, PNG, WEBP
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+              </label>
+            ) : (
+              <div className="relative rounded-xl overflow-hidden">
+                <img
+                  src={imagePreview}
+                  alt="Cover preview"
+                  className="w-full h-48 object-cover"
+                />
+                <button
+                  onClick={handleRemoveImage}
+                  className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white text-xs px-3 py-1 rounded-full transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Publish toggle */}
