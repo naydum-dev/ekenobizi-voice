@@ -54,6 +54,7 @@ ekenobizi-voice/
 │   │   ├── Profile.jsx
 │   │   ├── PostPage.jsx
 │   │   ├── CreatePost.jsx
+│   │   ├── EditPost.jsx
 │   │   ├── ForgotPassword.jsx
 │   │   └── ResetPassword.jsx
 │   ├── services/
@@ -175,6 +176,7 @@ posts
 ├── category    text NOT NULL DEFAULT 'Community'
 ├── author_id   uuid NOT NULL → profiles.id
 ├── published   bool DEFAULT false
+├── image_url   text (nullable)
 ├── created_at  timestamptz DEFAULT now()
 └── updated_at  timestamptz DEFAULT now()
 
@@ -196,7 +198,7 @@ posts      ──< comments    (one post → many comments)
 profiles   ──< comments    (one profile → many comments)
 ```
 
-All foreign keys use ON DELETE CASCADE — deleting a user removes their profile, posts, and comments automatically.
+All foreign keys use ON DELETE CASCADE — deleting a user removes their profile, posts, and comments automatically. Deleting a post removes all its comments automatically.
 
 ---
 
@@ -275,7 +277,31 @@ CREATE POLICY "Users can update own comments"
 CREATE POLICY "Users can delete own comments"
   ON comments FOR DELETE
   USING (auth.uid() = author_id);
+
+-- STORAGE
+CREATE POLICY "Admins can upload post images"
+  ON storage.objects FOR INSERT
+  WITH CHECK (
+    bucket_id = 'post-images'
+    AND auth.uid() IN (
+      SELECT id FROM profiles WHERE is_admin = true
+    )
+  );
+
+CREATE POLICY "Public can view post images"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'post-images');
 ```
+
+---
+
+## SUPABASE STORAGE
+
+- **Bucket name:** `post-images`
+- **Public:** Yes
+- **Purpose:** Stores cover images for blog posts
+- **Upload flow:** File uploaded to Storage first → public URL returned → URL saved to `posts.image_url`
+- **File naming:** `{user.id}-{Date.now()}.{ext}` — unique per upload
 
 ---
 
@@ -285,11 +311,13 @@ CREATE POLICY "Users can delete own comments"
 <Routes>
   <Route path="/" element={<Home />} />
   <Route path="/about" element={<About />} />
-  <Route path="/register" element={<Register />} />
   <Route path="/login" element={<Login />} />
+  <Route path="/register" element={<Register />} />
   <Route path="/forgot-password" element={<ForgotPassword />} />
   <Route path="/reset-password" element={<ResetPassword />} />
   <Route path="/post/:id" element={<PostPage />} />
+  <Route path="/stories" element={<ComingSoon page="Stories" />} />
+  <Route path="/community" element={<ComingSoon page="Community" />} />
   <Route
     path="/profile"
     element={
@@ -306,6 +334,14 @@ CREATE POLICY "Users can delete own comments"
       </ProtectedRoute>
     }
   />
+  <Route
+    path="/edit-post/:id"
+    element={
+      <ProtectedRoute>
+        <EditPost />
+      </ProtectedRoute>
+    }
+  />
 </Routes>
 ```
 
@@ -315,47 +351,50 @@ CREATE POLICY "Users can delete own comments"
 
 - Fetches session on load via `getSession()`
 - Listens for auth changes via `onAuthStateChange()`
-- Fetches `profiles` row after login — includes `is_admin`
-- Exposes: `user`, `profile`, `isAdmin`, `loading`, `signOut`
+- Fetches `profiles` row after login — includes `username`, `full_name`, `is_admin`
+- Exposes: `user`, `profile`, `isAdmin`, `loading`, `signOut`, `refreshProfile`
+- `refreshProfile()` — re-fetches profile from DB, called after profile edits so Header updates immediately
 
 ---
 
 ## ADMIN SYSTEM
 
 - `is_admin` boolean column on `profiles` table (DEFAULT false)
-- Set manually via SQL: `UPDATE profiles SET is_admin = true WHERE username = 'chinedum_chijioke01'`
-- `isAdmin` exposed from `AuthContext` — consumed by Header and CreatePost
+- Set manually via SQL: `UPDATE profiles SET is_admin = true WHERE username = 'EkenobiziVoice'`
+- `isAdmin` exposed from `AuthContext` — consumed by Header, PostPage, CreatePost, and EditPost
 - Write link in nav only visible to admins
-- CreatePost page renders permission error for non-admins
+- CreatePost and EditPost pages render permission error for non-admins
 - RLS policies on posts table restrict INSERT/UPDATE/DELETE to admins only
+- Admin username: `EkenobiziVoice`
 
 ---
 
 ## PAGES BUILT
 
-| Page            | Path             | File                         | Status                         |
-| --------------- | ---------------- | ---------------------------- | ------------------------------ |
-| Home            | /                | src/pages/Home.jsx           | Done - Hero image + animations |
-| Post            | /post/:id        | src/pages/PostPage.jsx       | Done - Comments working        |
-| About           | /about           | src/pages/About.jsx          | Done - Full community page     |
-| Create Post     | /create-post     | src/pages/CreatePost.jsx     | Done - Admin only              |
-| Register        | /register        | src/pages/Register.jsx       | Done - Built and wired         |
-| Login           | /login           | src/pages/Login.jsx          | Done - Built and wired         |
-| Profile         | /profile         | src/pages/Profile.jsx        | Done - Built and wired         |
-| Forgot Password | /forgot-password | src/pages/ForgotPassword.jsx | Done - Built and wired         |
-| Reset Password  | /reset-password  | src/pages/ResetPassword.jsx  | Done - Built and wired         |
+| Page            | Path             | File                         | Status                                                   |
+| --------------- | ---------------- | ---------------------------- | -------------------------------------------------------- |
+| Home            | /                | src/pages/Home.jsx           | Done — hero, featured + sidebar layout, images           |
+| Post            | /post/:id        | src/pages/PostPage.jsx       | Done — cover image, comments, admin edit/delete buttons  |
+| About           | /about           | src/pages/About.jsx          | Done — full community page                               |
+| Create Post     | /create-post     | src/pages/CreatePost.jsx     | Done — image upload, admin only                          |
+| Edit Post       | /edit-post/:id   | src/pages/EditPost.jsx       | Done — pre-filled form, image replace/remove, admin only |
+| Register        | /register        | src/pages/Register.jsx       | Done — built and wired                                   |
+| Login           | /login           | src/pages/Login.jsx          | Done — built and wired                                   |
+| Profile         | /profile         | src/pages/Profile.jsx        | Done — username + full name edit                         |
+| Forgot Password | /forgot-password | src/pages/ForgotPassword.jsx | Done — built and wired                                   |
+| Reset Password  | /reset-password  | src/pages/ResetPassword.jsx  | Done — built and wired                                   |
 
 ---
 
 ## COMPONENTS BUILT
 
-| Component      | File                              | Purpose                                      |
-| -------------- | --------------------------------- | -------------------------------------------- |
-| Header         | src/components/Header.jsx         | Two-row nav, auth-aware, admin Write link    |
-| Footer         | src/components/Footer.jsx         | 3-column, dynamic copyright year             |
-| PostCard       | src/components/PostCard.jsx       | Reusable post preview card                   |
-| Comment        | src/components/Comment.jsx        | Single comment with edit/delete (owner only) |
-| ProtectedRoute | src/components/ProtectedRoute.jsx | Guards private routes                        |
+| Component      | File                              | Purpose                                              |
+| -------------- | --------------------------------- | ---------------------------------------------------- |
+| Header         | src/components/Header.jsx         | Two-row nav, auth-aware, reads username from profile |
+| Footer         | src/components/Footer.jsx         | 3-column, dynamic copyright year                     |
+| PostCard       | src/components/PostCard.jsx       | Reusable post preview card with image support        |
+| Comment        | src/components/Comment.jsx        | Single comment with edit/delete (owner only)         |
+| ProtectedRoute | src/components/ProtectedRoute.jsx | Guards private routes                                |
 
 ---
 
@@ -380,6 +419,11 @@ Day 9: Add delete own comments feature with RLS policy
 Day 9: Add Create Post page with admin-only access and RLS policies
 Day 9: Update CONTEXT.md to reflect Day 9 progress
 Day 10: Comment edit functionality with confirmation on delete
+Day 11: Add image upload to posts — Storage bucket, image_url column, CreatePost upload field, images on Home and PostPage
+Day 11: Fix profile page route, header username source, and profile refresh after edit
+Day 12: Add Edit Post page with pre-filled form and image replacement
+Day 12: Add Delete Post with confirmation and cascade delete
+Day 12: Update CONTEXT.md to reflect Day 12 progress
 ```
 
 ---
@@ -450,44 +494,55 @@ Day 10: Comment edit functionality with confirmation on delete
 - Props as a communication contract — component calls `onEdit(id, text)`, parent owns the Supabase logic
 - `git add -A` vs `git add .` — `-A` stages all changes repo-wide, `.` stages from current folder down
 
+### Day 11
+
+- Supabase Storage works differently from the database — upload the file first, get back a URL, save that URL to the DB row
+- `URL.createObjectURL()` creates a temporary local preview before the file is uploaded
+- Storage RLS policies are written in SQL just like table policies, run from the SQL Editor
+- The Home page builds its own card markup — updating PostCard.jsx alone wasn't enough
+- AuthContext caches profile on login — a `refreshProfile()` function is needed to sync changes made on the Profile page
+- Header must read username from `profile` (profiles table) not `user.user_metadata` (Supabase Auth object)
+- `user.user_metadata` is set at signup and never updated — always use the profiles table as source of truth for display data
+- A missing route in App.jsx renders a blank white page with no error — always check App.jsx first
+
+### Day 12
+
+- Pre-filling a form from fetched data — call all `setState` setters inside `useEffect` after the fetch resolves
+- Two-phase load pattern — fetch existing data first, only render the form after loading is false
+- Supabase UPDATE vs INSERT — `.update()` always needs `.eq('id', row_id)` to target a specific row; without it every row would be updated
+- Conditional image handling — three scenarios: keep existing (`existingImageUrl`), replace with new (`newImageFile`), or remove entirely (set both to null)
+- Two image state variables — `existingImageUrl` (from DB) and `newImageFile` (new file pick) — kept separate so save logic can decide which path to take
+- `URL.createObjectURL()` reused for edit preview — same pattern as CreatePost
+- Double-guarding admin pages — `ProtectedRoute` handles unauthenticated users, `isAdmin` check inside the page handles non-admin logged-in users
+- `ON DELETE CASCADE` on posts → comments means deleting a post cleans up all its comments automatically — no extra Supabase calls needed
+- `updated_at: new Date().toISOString()` — manually passing the timestamp on update since Supabase doesn't auto-update it by default
+
 ---
 
 ## CURRENT PROJECT STATE
 
-**Status:** Days 1-10 Complete
-**Dev Server:** npm run dev → http://localhost:5173
+**Status:** Days 1–12 Complete
+**Dev Server:** `npm run dev` → http://localhost:5173
 **Auth:** Registration + Login + Logout + Session persistence + Password reset all working
-**Profiles:** Users can view and edit their username and full name
-**Posts:** Home page displays live posts from Supabase. Single post view at /post/:id working. Admin can create posts from the app.
+**Profiles:** Users can view and edit their username and full name. Changes reflect in Header immediately via `refreshProfile()`
+**Posts:** Home page displays live posts with featured + sidebar layout. Cover images show on cards and post pages. Admin can create, edit, and delete posts. Edit form pre-fills with existing data including current image.
 **Comments:** Display on post pages. Authenticated users can post. Users can edit and delete their own comments. Confirmation dialog before delete.
 **About:** Full community page with hero image, five villages, mission pillars and story sections.
-**Admin System:** is_admin flag on profiles. Write link and CreatePost page admin-only. RLS enforced.
-**Database:** 3 tables live (profiles, posts, comments). Trigger + all RLS policies active.
+**Admin System:** `is_admin` flag on profiles. Write, Edit, and Delete restricted to admins. RLS enforced on all post operations. Admin username: `EkenobiziVoice`.
+**Storage:** `post-images` bucket live. Admins can upload and replace images, everyone can view.
+**Database:** 3 tables live (profiles, posts, comments). `image_url` column on posts. Trigger + all RLS policies active.
 
 ---
 
 ## NEXT STEPS
 
-### DAY 11 OPTIONS
+### DAY 13: Suggestions welcome
 
-**Option A: Post images**
-
-- Supabase Storage bucket for image uploads
-- Image upload field on Create Post form
-- Display images on Home page cards and Post page
-- Update posts table with image_url column
-
-**Option B: Edit and Delete posts (Admin)**
-
-- Edit button on post pages for admins
-- Edit Post page pre-filled with existing data
-- Delete post with confirmation prompt
-
-**Option C: Draft management**
-
-- Admin dashboard showing all posts (published + drafts)
-- Toggle published status from dashboard
-- Delete drafts
+- Pagination or infinite scroll on Home page
+- Search / filter posts by category
+- Reading time estimate on posts
+- SEO improvements (page titles, meta description)
+- Deploy to Vercel
 
 ---
 
@@ -528,7 +583,19 @@ Day 10: Comment edit functionality with confirmation on delete
 24. Comment edit/delete buttons only render when currentUserId === comment.author_id
 25. Local state update with .map() after edit — avoids unnecessary re-fetch
 26. window.confirm() used for delete confirmation — native dialog, no extra dependencies
+27. Supabase Storage bucket `post-images` — public, admin upload only
+28. File naming in Storage: `{user.id}-{Date.now()}.{ext}` — guarantees uniqueness
+29. `URL.createObjectURL()` used for instant image preview before upload
+30. Header reads username from `profile` context, not `user.user_metadata`
+31. `refreshProfile()` in AuthContext re-fetches profile after edits — keeps Header in sync
+32. `/profile` route must be in App.jsx wrapped in ProtectedRoute
+33. EditPost pre-fills form fields by calling setState setters inside useEffect after fetch
+34. Two-phase load on EditPost — fetch first, render form only after loading is false
+35. `.update().eq('id', id)` always required — omitting .eq() would update every row
+36. Two image state variables on EditPost: `existingImageUrl` (DB value) and `newImageFile` (new pick)
+37. EditPost wrapped in ProtectedRoute + isAdmin check — two layers of access control
+38. Deleting a post cascades to comments — no manual comment cleanup needed
 
 ---
 
-_Last Updated: Day 10 Complete — Apr 21, 2026_
+_Last Updated: Day 12 Complete — Apr 24, 2026_

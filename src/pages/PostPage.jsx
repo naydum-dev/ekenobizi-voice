@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "../services/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import Comment from "../components/Comment";
 
 export default function PostPage() {
   const { id } = useParams();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const navigate = useNavigate();
 
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -107,6 +108,21 @@ export default function PostPage() {
     }
   }
 
+  async function handleDeletePost() {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this post? This cannot be undone.",
+    );
+    if (!confirmed) return;
+
+    const { error } = await supabase.from("posts").delete().eq("id", post.id);
+
+    if (error) {
+      alert("Could not delete post. Please try again.");
+    } else {
+      navigate("/");
+    }
+  }
+
   if (loading)
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center">
@@ -146,6 +162,25 @@ export default function PostPage() {
               {post.category}
             </span>
           </div>
+
+          {/* ── ADMIN ACTIONS ── */}
+          {isAdmin && (
+            <div className="flex gap-3 mb-6">
+              <Link
+                to={`/edit-post/${post.id}`}
+                className="bg-accent hover:bg-green-700 text-white text-sm font-semibold px-5 py-2 rounded-full transition-all duration-200"
+              >
+                ✏️ Edit Post
+              </Link>
+              <button
+                onClick={handleDeletePost}
+                className="bg-red-700 hover:bg-red-900 text-white text-sm font-semibold px-5 py-2 rounded-full transition-all duration-200"
+              >
+                🗑️ Delete Post
+              </button>
+            </div>
+          )}
+
           <h1
             className="text-3xl md:text-5xl font-bold leading-tight mb-6"
             style={{ fontFamily: "'Playfair Display', serif" }}
@@ -166,7 +201,7 @@ export default function PostPage() {
         </div>
       </div>
 
-      {/* ── NEW: Cover Image ── */}
+      {/* ── Cover Image ── */}
       {post.image_url && (
         <div className="max-w-3xl mx-auto px-6 pt-8">
           <img
@@ -205,17 +240,14 @@ export default function PostPage() {
           {commentsLoading && (
             <p className="text-gray-400 text-sm">Loading comments...</p>
           )}
-
           {commentsError && (
             <p className="text-red-400 text-sm">{commentsError}</p>
           )}
-
           {!commentsLoading && !commentsError && comments.length === 0 && (
             <p className="text-gray-400 text-sm italic">
               No comments yet. Be the first to share your thoughts.
             </p>
           )}
-
           {!commentsLoading && !commentsError && comments.length > 0 && (
             <div className="flex flex-col gap-6 mb-8">
               {comments.map((comment) => (

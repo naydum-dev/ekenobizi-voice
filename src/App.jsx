@@ -12,6 +12,7 @@ import Home from "./pages/Home";
 import About from "./pages/About";
 import PostPage from "./pages/PostPage";
 import CreatePost from "./pages/CreatePost";
+import EditPost from "./pages/EditPost";
 
 const ComingSoon = ({ page }) => (
   <div className="min-h-screen bg-cream flex items-center justify-center">
@@ -59,6 +60,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <CreatePost />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/edit-post/:id"
+              element={
+                <ProtectedRoute>
+                  <EditPost />
                 </ProtectedRoute>
               }
             />
