@@ -13,6 +13,7 @@ import About from "./pages/About";
 import PostPage from "./pages/PostPage";
 import CreatePost from "./pages/CreatePost";
 import EditPost from "./pages/EditPost";
+import AdminDashboard from "./pages/AdminDashboard";
 
 const ComingSoon = ({ page }) => (
   <div className="min-h-screen bg-cream flex items-center justify-center">
@@ -68,6 +69,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <EditPost />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <AdminDashboard />
                 </ProtectedRoute>
               }
             />

@@ -56,7 +56,8 @@ ekenobizi-voice/
 │   │   ├── CreatePost.jsx
 │   │   ├── EditPost.jsx
 │   │   ├── ForgotPassword.jsx
-│   │   └── ResetPassword.jsx
+│   │   ├── ResetPassword.jsx
+│   │   └── AdminDashboard.jsx
 │   ├── services/
 │   │   └── supabase.js
 │   ├── styles/
@@ -278,6 +279,12 @@ CREATE POLICY "Users can delete own comments"
   ON comments FOR DELETE
   USING (auth.uid() = author_id);
 
+CREATE POLICY "Admins can delete any comment"
+  ON comments FOR DELETE
+  USING (auth.uid() IN (
+    SELECT id FROM profiles WHERE is_admin = true
+  ));
+
 -- STORAGE
 CREATE POLICY "Admins can upload post images"
   ON storage.objects FOR INSERT
@@ -342,6 +349,14 @@ CREATE POLICY "Public can view post images"
       </ProtectedRoute>
     }
   />
+  <Route
+    path="/admin"
+    element={
+      <ProtectedRoute>
+        <AdminDashboard />
+      </ProtectedRoute>
+    }
+  />
 </Routes>
 ```
 
@@ -361,9 +376,10 @@ CREATE POLICY "Public can view post images"
 
 - `is_admin` boolean column on `profiles` table (DEFAULT false)
 - Set manually via SQL: `UPDATE profiles SET is_admin = true WHERE username = 'EkenobiziVoice'`
-- `isAdmin` exposed from `AuthContext` — consumed by Header, PostPage, CreatePost, and EditPost
-- Write link in nav only visible to admins
+- `isAdmin` exposed from `AuthContext` — consumed by Header, PostPage, CreatePost, EditPost, and AdminDashboard
+- Write and Admin links in nav only visible to admins
 - CreatePost and EditPost pages render permission error for non-admins
+- AdminDashboard redirects non-admins to home page
 - RLS policies on posts table restrict INSERT/UPDATE/DELETE to admins only
 - Admin username: `EkenobiziVoice`
 
@@ -371,18 +387,19 @@ CREATE POLICY "Public can view post images"
 
 ## PAGES BUILT
 
-| Page            | Path             | File                         | Status                                                   |
-| --------------- | ---------------- | ---------------------------- | -------------------------------------------------------- |
-| Home            | /                | src/pages/Home.jsx           | Done — hero, featured + sidebar layout, images           |
-| Post            | /post/:id        | src/pages/PostPage.jsx       | Done — cover image, comments, admin edit/delete buttons  |
-| About           | /about           | src/pages/About.jsx          | Done — full community page                               |
-| Create Post     | /create-post     | src/pages/CreatePost.jsx     | Done — image upload, admin only                          |
-| Edit Post       | /edit-post/:id   | src/pages/EditPost.jsx       | Done — pre-filled form, image replace/remove, admin only |
-| Register        | /register        | src/pages/Register.jsx       | Done — built and wired                                   |
-| Login           | /login           | src/pages/Login.jsx          | Done — built and wired                                   |
-| Profile         | /profile         | src/pages/Profile.jsx        | Done — username + full name edit                         |
-| Forgot Password | /forgot-password | src/pages/ForgotPassword.jsx | Done — built and wired                                   |
-| Reset Password  | /reset-password  | src/pages/ResetPassword.jsx  | Done — built and wired                                   |
+| Page            | Path             | File                         | Status                                                                      |
+| --------------- | ---------------- | ---------------------------- | --------------------------------------------------------------------------- |
+| Home            | /                | src/pages/Home.jsx           | Done — hero, featured + sidebar layout, images                              |
+| Post            | /post/:id        | src/pages/PostPage.jsx       | Done — cover image, comments, admin edit/delete buttons                     |
+| About           | /about           | src/pages/About.jsx          | Done — full community page                                                  |
+| Create Post     | /create-post     | src/pages/CreatePost.jsx     | Done — image upload, admin only                                             |
+| Edit Post       | /edit-post/:id   | src/pages/EditPost.jsx       | Done — pre-filled form, image replace/remove, admin only                    |
+| Register        | /register        | src/pages/Register.jsx       | Done — built and wired                                                      |
+| Login           | /login           | src/pages/Login.jsx          | Done — built and wired                                                      |
+| Profile         | /profile         | src/pages/Profile.jsx        | Done — username + full name edit                                            |
+| Forgot Password | /forgot-password | src/pages/ForgotPassword.jsx | Done — built and wired                                                      |
+| Reset Password  | /reset-password  | src/pages/ResetPassword.jsx  | Done — built and wired                                                      |
+| Admin Dashboard | /admin           | src/pages/AdminDashboard.jsx | Done — stats, member list with search, comment moderation with admin delete |
 
 ---
 
@@ -424,6 +441,10 @@ Day 11: Fix profile page route, header username source, and profile refresh afte
 Day 12: Add Edit Post page with pre-filled form and image replacement
 Day 12: Add Delete Post with confirmation and cascade delete
 Day 12: Update CONTEXT.md to reflect Day 12 progress
+Day 13: Add Admin Dashboard — stats, member list with search, comment moderation
+Day 13: Add Admins can delete any comment RLS policy
+Day 13: Add /admin route to App.jsx and Admin nav link to Header
+Day 13: Update CONTEXT.md to reflect Day 13 progress
 ```
 
 ---
@@ -517,18 +538,29 @@ Day 12: Update CONTEXT.md to reflect Day 12 progress
 - `ON DELETE CASCADE` on posts → comments means deleting a post cleans up all its comments automatically — no extra Supabase calls needed
 - `updated_at: new Date().toISOString()` — manually passing the timestamp on update since Supabase doesn't auto-update it by default
 
+### Day 13
+
+- `Promise.all()` — runs multiple async operations in parallel, waits for all to finish together; faster than sequential awaits
+- `count: 'exact', head: true` — Supabase COUNT query pattern; returns only the number, no rows fetched; efficient for dashboard stats
+- Tab UI pattern — single `activeTab` state string controls which section renders; cleaner than multiple boolean flags
+- Additive admin architecture — new admin features live in a dedicated `/admin` route without touching existing admin functionality on other pages
+- RLS coexistence — two DELETE policies on the same table work fine; Supabase uses OR logic between policies on the same operation
+- Admin redirect pattern — check `authLoading` first, then `isAdmin`, then redirect; avoids flashing the page before auth resolves
+- Joining across three tables in one Supabase query — `select('*, profiles(username), posts(title)')` pulls related data from comments, their authors, and their parent posts simultaneously
+
 ---
 
 ## CURRENT PROJECT STATE
 
-**Status:** Days 1–12 Complete
+**Status:** Days 1–13 Complete
 **Dev Server:** `npm run dev` → http://localhost:5173
 **Auth:** Registration + Login + Logout + Session persistence + Password reset all working
 **Profiles:** Users can view and edit their username and full name. Changes reflect in Header immediately via `refreshProfile()`
 **Posts:** Home page displays live posts with featured + sidebar layout. Cover images show on cards and post pages. Admin can create, edit, and delete posts. Edit form pre-fills with existing data including current image.
-**Comments:** Display on post pages. Authenticated users can post. Users can edit and delete their own comments. Confirmation dialog before delete.
+**Comments:** Display on post pages. Authenticated users can post. Users can edit and delete their own comments. Admin can delete any comment from the dashboard. Confirmation dialog before delete.
 **About:** Full community page with hero image, five villages, mission pillars and story sections.
-**Admin System:** `is_admin` flag on profiles. Write, Edit, and Delete restricted to admins. RLS enforced on all post operations. Admin username: `EkenobiziVoice`.
+**Admin System:** `is_admin` flag on profiles. Write, Edit, Delete, and Admin Dashboard restricted to admins. RLS enforced on all post and comment moderation operations. Admin username: `EkenobiziVoice`.
+**Admin Dashboard:** `/admin` route — live stats (users, posts, comments), member list with real-time search, comment moderation with delete.
 **Storage:** `post-images` bucket live. Admins can upload and replace images, everyone can view.
 **Database:** 3 tables live (profiles, posts, comments). `image_url` column on posts. Trigger + all RLS policies active.
 
@@ -536,7 +568,7 @@ Day 12: Update CONTEXT.md to reflect Day 12 progress
 
 ## NEXT STEPS
 
-### DAY 13: Suggestions welcome
+### DAY 14: Suggestions welcome
 
 - Pagination or infinite scroll on Home page
 - Search / filter posts by category
@@ -595,7 +627,12 @@ Day 12: Update CONTEXT.md to reflect Day 12 progress
 36. Two image state variables on EditPost: `existingImageUrl` (DB value) and `newImageFile` (new pick)
 37. EditPost wrapped in ProtectedRoute + isAdmin check — two layers of access control
 38. Deleting a post cascades to comments — no manual comment cleanup needed
+39. Promise.all() used in AdminDashboard — all 5 Supabase queries fire in parallel
+40. count: 'exact', head: true — fetches only the count, not the rows; used for stats
+41. Two DELETE policies on comments coexist — users delete own, admins delete any; Supabase OR logic allows either
+42. AdminDashboard checks authLoading before isAdmin to avoid redirect flash on page load
+43. Tab UI in AdminDashboard — single activeTab state drives which section renders
 
 ---
 
-_Last Updated: Day 12 Complete — Apr 24, 2026_
+_Last Updated: Day 13 Complete — Apr 29, 2026_

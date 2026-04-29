@@ -88,6 +88,18 @@ export default function Header() {
               ✍️ Write
             </NavLink>
           )}
+          {isAdmin && (
+            <NavLink
+              to="/admin"
+              className={({ isActive }) =>
+                isActive
+                  ? "text-accent border-b-2 border-accent pb-0.5"
+                  : "hover:text-accent transition-colors"
+              }
+            >
+              ⚙️ Admin
+            </NavLink>
+          )}
         </nav>
       </div>
     </header>
