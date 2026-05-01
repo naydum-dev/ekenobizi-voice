@@ -14,6 +14,8 @@ import PostPage from "./pages/PostPage";
 import CreatePost from "./pages/CreatePost";
 import EditPost from "./pages/EditPost";
 import AdminDashboard from "./pages/AdminDashboard";
+import Stories from "./pages/Stories";
+import SubmitStory from "./pages/SubmitStory";
 
 const ComingSoon = ({ page }) => (
   <div className="min-h-screen bg-cream flex items-center justify-center">
@@ -37,7 +39,17 @@ export default function App() {
           <Header />
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/stories" element={<ComingSoon page="Stories" />} />
+
+            <Route path="/stories" element={<Stories />} />
+
+            <Route
+              path="/submit"
+              element={
+                <ProtectedRoute>
+                  <SubmitStory />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/community"
               element={<ComingSoon page="Community" />}

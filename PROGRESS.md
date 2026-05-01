@@ -57,7 +57,9 @@ ekenobizi-voice/
 │   │   ├── EditPost.jsx
 │   │   ├── ForgotPassword.jsx
 │   │   ├── ResetPassword.jsx
-│   │   └── AdminDashboard.jsx
+│   │   ├── AdminDashboard.jsx
+│   │   ├── Stories.jsx
+│   │   └── SubmitStory.jsx
 │   ├── services/
 │   │   └── supabase.js
 │   ├── styles/
@@ -188,6 +190,17 @@ comments
 ├── post_id     uuid NOT NULL → posts.id
 ├── author_id   uuid NOT NULL → profiles.id
 └── created_at  timestamptz DEFAULT now()
+
+-- Community story submissions
+submissions
+├── id          uuid PRIMARY KEY (auto-generated)
+├── title       text NOT NULL
+├── content     text NOT NULL
+├── excerpt     text NOT NULL DEFAULT ''
+├── category    text NOT NULL DEFAULT 'Community'
+├── author_id   uuid NOT NULL → profiles.id
+├── status      text NOT NULL DEFAULT 'pending'
+└── created_at  timestamptz DEFAULT now()
 ```
 
 ### Relationships
@@ -197,9 +210,10 @@ auth.users ──< profiles    (one auth user → one profile)
 profiles   ──< posts       (one profile → many posts)
 posts      ──< comments    (one post → many comments)
 profiles   ──< comments    (one profile → many comments)
+profiles   ──< submissions (one profile → many submissions)
 ```
 
-All foreign keys use ON DELETE CASCADE — deleting a user removes their profile, posts, and comments automatically. Deleting a post removes all its comments automatically.
+All foreign keys use ON DELETE CASCADE — deleting a user removes their profile, posts, comments, and submissions automatically. Deleting a post removes all its comments automatically.
 
 ---
 
@@ -285,6 +299,33 @@ CREATE POLICY "Admins can delete any comment"
     SELECT id FROM profiles WHERE is_admin = true
   ));
 
+-- SUBMISSIONS
+CREATE POLICY "Users can insert own submissions"
+  ON submissions FOR INSERT
+  WITH CHECK (auth.uid() = author_id);
+
+CREATE POLICY "Users can read own submissions"
+  ON submissions FOR SELECT
+  USING (auth.uid() = author_id);
+
+CREATE POLICY "Admins can read all submissions"
+  ON submissions FOR SELECT
+  USING (auth.uid() IN (
+    SELECT id FROM profiles WHERE is_admin = true
+  ));
+
+CREATE POLICY "Admins can update submissions"
+  ON submissions FOR UPDATE
+  USING (auth.uid() IN (
+    SELECT id FROM profiles WHERE is_admin = true
+  ));
+
+CREATE POLICY "Admins can delete submissions"
+  ON submissions FOR DELETE
+  USING (auth.uid() IN (
+    SELECT id FROM profiles WHERE is_admin = true
+  ));
+
 -- STORAGE
 CREATE POLICY "Admins can upload post images"
   ON storage.objects FOR INSERT
@@ -309,6 +350,7 @@ CREATE POLICY "Public can view post images"
 - **Purpose:** Stores cover images for blog posts
 - **Upload flow:** File uploaded to Storage first → public URL returned → URL saved to `posts.image_url`
 - **File naming:** `{user.id}-{Date.now()}.{ext}` — unique per upload
+- **Access:** Admin upload only. Members cannot upload images (admin-controlled).
 
 ---
 
@@ -318,18 +360,26 @@ CREATE POLICY "Public can view post images"
 <Routes>
   <Route path="/" element={<Home />} />
   <Route path="/about" element={<About />} />
+  <Route path="/stories" element={<Stories />} />
   <Route path="/login" element={<Login />} />
   <Route path="/register" element={<Register />} />
   <Route path="/forgot-password" element={<ForgotPassword />} />
   <Route path="/reset-password" element={<ResetPassword />} />
   <Route path="/post/:id" element={<PostPage />} />
-  <Route path="/stories" element={<ComingSoon page="Stories" />} />
   <Route path="/community" element={<ComingSoon page="Community" />} />
   <Route
     path="/profile"
     element={
       <ProtectedRoute>
         <Profile />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/submit"
+    element={
+      <ProtectedRoute>
+        <SubmitStory />
       </ProtectedRoute>
     }
   />
@@ -387,19 +437,21 @@ CREATE POLICY "Public can view post images"
 
 ## PAGES BUILT
 
-| Page            | Path             | File                         | Status                                                                      |
-| --------------- | ---------------- | ---------------------------- | --------------------------------------------------------------------------- |
-| Home            | /                | src/pages/Home.jsx           | Done — hero, featured + sidebar layout, images                              |
-| Post            | /post/:id        | src/pages/PostPage.jsx       | Done — cover image, comments, admin edit/delete buttons                     |
-| About           | /about           | src/pages/About.jsx          | Done — full community page                                                  |
-| Create Post     | /create-post     | src/pages/CreatePost.jsx     | Done — image upload, admin only                                             |
-| Edit Post       | /edit-post/:id   | src/pages/EditPost.jsx       | Done — pre-filled form, image replace/remove, admin only                    |
-| Register        | /register        | src/pages/Register.jsx       | Done — built and wired                                                      |
-| Login           | /login           | src/pages/Login.jsx          | Done — built and wired                                                      |
-| Profile         | /profile         | src/pages/Profile.jsx        | Done — username + full name edit                                            |
-| Forgot Password | /forgot-password | src/pages/ForgotPassword.jsx | Done — built and wired                                                      |
-| Reset Password  | /reset-password  | src/pages/ResetPassword.jsx  | Done — built and wired                                                      |
-| Admin Dashboard | /admin           | src/pages/AdminDashboard.jsx | Done — stats, member list with search, comment moderation with admin delete |
+| Page            | Path             | File                         | Status                                                                                        |
+| --------------- | ---------------- | ---------------------------- | --------------------------------------------------------------------------------------------- |
+| Home            | /                | src/pages/Home.jsx           | Done — hero, featured + sidebar layout, images, auth-aware hero buttons                       |
+| Stories         | /stories         | src/pages/Stories.jsx        | Done — clean 3-column archive grid, category filter, post count                               |
+| Post            | /post/:id        | src/pages/PostPage.jsx       | Done — cover image, comments, admin edit/delete buttons                                       |
+| About           | /about           | src/pages/About.jsx          | Done — full community page                                                                    |
+| Submit Story    | /submit          | src/pages/SubmitStory.jsx    | Done — form for logged-in members, pending review workflow, success screen                    |
+| Create Post     | /create-post     | src/pages/CreatePost.jsx     | Done — image upload, admin only                                                               |
+| Edit Post       | /edit-post/:id   | src/pages/EditPost.jsx       | Done — pre-filled form, image replace/remove, admin only                                      |
+| Register        | /register        | src/pages/Register.jsx       | Done — built and wired                                                                        |
+| Login           | /login           | src/pages/Login.jsx          | Done — built and wired                                                                        |
+| Profile         | /profile         | src/pages/Profile.jsx        | Done — username + full name edit                                                              |
+| Forgot Password | /forgot-password | src/pages/ForgotPassword.jsx | Done — built and wired                                                                        |
+| Reset Password  | /reset-password  | src/pages/ResetPassword.jsx  | Done — built and wired                                                                        |
+| Admin Dashboard | /admin           | src/pages/AdminDashboard.jsx | Done — stats (incl. pending submissions), members, comment moderation, submissions review tab |
 
 ---
 
@@ -445,6 +497,13 @@ Day 13: Add Admin Dashboard — stats, member list with search, comment moderati
 Day 13: Add Admins can delete any comment RLS policy
 Day 13: Add /admin route to App.jsx and Admin nav link to Header
 Day 13: Update CONTEXT.md to reflect Day 13 progress
+Day 14: Add Stories archive page — 3-column grid, category filter
+Day 14: Fix hero buttons — Read Stories to /stories, Share Your Story auth-aware
+Day 14: Fix CTA button at bottom of Home — auth-aware
+Day 15: Add submissions table with RLS policies
+Day 15: Add SubmitStory page — form, success screen, pending review flow
+Day 15: Update AdminDashboard — Submissions tab, approve and dismiss actions
+Day 15: Update CONTEXT.md to reflect Day 15 progress
 ```
 
 ---
@@ -548,30 +607,54 @@ Day 13: Update CONTEXT.md to reflect Day 13 progress
 - Admin redirect pattern — check `authLoading` first, then `isAdmin`, then redirect; avoids flashing the page before auth resolves
 - Joining across three tables in one Supabase query — `select('*, profiles(username), posts(title)')` pulls related data from comments, their authors, and their parent posts simultaneously
 
+### Day 14
+
+- Client-side filtering — filter state derived from a full fetched list; no extra Supabase calls on category change
+- Sticky filter bar — `sticky top-0 z-20` keeps the category bar visible while scrolling the archive
+- `overflow-x-auto` on filter bar — prevents layout break on mobile when many category buttons exist
+- Consistent empty state pattern — empty state per filtered category with an escape hatch back to "All"
+- Auth-aware buttons — `to={user ? "/submit" : "/register"}` pattern; single ternary handles routing based on login state
+- Label swap on CTA — logged-in users see "Share Your Story", logged-out see "Join Free Today"; same button, different message
+
+### Day 15
+
+- Submissions table — separate from posts; `status` column (`pending`, `approved`, `dismissed`) tracks lifecycle
+- Approve flow — insert into posts with `published: true`, then update submission status to `approved`; two sequential Supabase calls
+- Dismiss flow — update submission status to `dismissed` only; no post created
+- Local state update after approve/dismiss — `.map()` to flip status in state; avoids full re-fetch
+- Pending count stat card — derived from a filtered COUNT query on submissions with `status = pending`
+- Resolved section — filtered from the same submissions array; appears only when resolved items exist
+- `<details>` / `<summary>` HTML elements — native collapsible for full story preview; zero JS needed
+- Pending badge on tab — red pill showing count only renders when `stats.submissions > 0`
+- Image upload kept admin-controlled — members submit text only; admin adds cover image via Edit Post after approval
+- Always add RLS policies before building UI — missing policies fail silently with empty results
+
 ---
 
 ## CURRENT PROJECT STATE
 
-**Status:** Days 1–13 Complete
+**Status:** Days 1–15 Complete
 **Dev Server:** `npm run dev` → http://localhost:5173
 **Auth:** Registration + Login + Logout + Session persistence + Password reset all working
 **Profiles:** Users can view and edit their username and full name. Changes reflect in Header immediately via `refreshProfile()`
 **Posts:** Home page displays live posts with featured + sidebar layout. Cover images show on cards and post pages. Admin can create, edit, and delete posts. Edit form pre-fills with existing data including current image.
+**Stories Page:** `/stories` — clean 3-column archive grid of all published posts. Sticky category filter bar. Client-side filtering. Post count display.
 **Comments:** Display on post pages. Authenticated users can post. Users can edit and delete their own comments. Admin can delete any comment from the dashboard. Confirmation dialog before delete.
+**Submissions:** Logged-in members can submit stories via `/submit`. Submissions go to `pending` status. Admin reviews in Dashboard Submissions tab — can approve (publishes as post) or dismiss. Resolved submissions tracked.
 **About:** Full community page with hero image, five villages, mission pillars and story sections.
-**Admin System:** `is_admin` flag on profiles. Write, Edit, Delete, and Admin Dashboard restricted to admins. RLS enforced on all post and comment moderation operations. Admin username: `EkenobiziVoice`.
-**Admin Dashboard:** `/admin` route — live stats (users, posts, comments), member list with real-time search, comment moderation with delete.
+**Admin System:** `is_admin` flag on profiles. Write, Edit, Delete, and Admin Dashboard restricted to admins. RLS enforced on all post, comment, and submission operations. Admin username: `EkenobiziVoice`.
+**Admin Dashboard:** `/admin` route — live stats (users, posts, comments, pending submissions), member list with real-time search, comment moderation, submissions review with approve/dismiss.
 **Storage:** `post-images` bucket live. Admins can upload and replace images, everyone can view.
-**Database:** 3 tables live (profiles, posts, comments). `image_url` column on posts. Trigger + all RLS policies active.
+**Database:** 4 tables live (profiles, posts, comments, submissions). Trigger + all RLS policies active.
 
 ---
 
 ## NEXT STEPS
 
-### DAY 14: Suggestions welcome
+### DAY 16: Suggestions welcome
 
-- Pagination or infinite scroll on Home page
-- Search / filter posts by category
+- Pagination or infinite scroll on Home and Stories pages
+- Search / filter posts by category on Home
 - Reading time estimate on posts
 - SEO improvements (page titles, meta description)
 - Deploy to Vercel
@@ -585,7 +668,7 @@ Day 13: Update CONTEXT.md to reflect Day 13 progress
 - Learning-focused (explanations before code)
 - Claude writes files, developer replaces them
 - Share existing files before updates
-- One instruction / one file at a time
+- One instruction at a time — test before moving on
 
 **Key Decisions Made:**
 
@@ -627,12 +710,19 @@ Day 13: Update CONTEXT.md to reflect Day 13 progress
 36. Two image state variables on EditPost: `existingImageUrl` (DB value) and `newImageFile` (new pick)
 37. EditPost wrapped in ProtectedRoute + isAdmin check — two layers of access control
 38. Deleting a post cascades to comments — no manual comment cleanup needed
-39. Promise.all() used in AdminDashboard — all 5 Supabase queries fire in parallel
+39. Promise.all() used in AdminDashboard — all Supabase queries fire in parallel
 40. count: 'exact', head: true — fetches only the count, not the rows; used for stats
 41. Two DELETE policies on comments coexist — users delete own, admins delete any; Supabase OR logic allows either
 42. AdminDashboard checks authLoading before isAdmin to avoid redirect flash on page load
 43. Tab UI in AdminDashboard — single activeTab state drives which section renders
+44. Stories page uses client-side filtering — full list fetched once, filtered in state on category change
+45. Auth-aware hero buttons — ternary on `to` prop routes based on user login state
+46. Submissions table uses status column — pending / approved / dismissed lifecycle
+47. Approve action inserts into posts then updates submission status — two sequential calls
+48. `<details>/<summary>` used for full story preview in admin — native HTML, no JS needed
+49. Image upload kept admin-controlled — members submit text only, admin adds image via Edit Post
+50. Pending submissions badge on Dashboard tab — only renders when count > 0
 
 ---
 
-_Last Updated: Day 13 Complete — Apr 29, 2026_
+_Last Updated: Day 15 Complete — May 1, 2026_

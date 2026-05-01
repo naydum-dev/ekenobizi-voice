@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../services/supabase";
+import { useAuth } from "../contexts/AuthContext";
 import heroImage from "../assets/hero.jpg";
 
 const categoryColors = {
@@ -19,6 +20,7 @@ function animate(delay) {
 }
 
 export default function Home() {
+  const { user } = useAuth();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -121,7 +123,7 @@ export default function Home() {
                 Read Stories
               </Link>
               <Link
-                to="/signup"
+                to={user ? "/submit" : "/register"}
                 className="border border-accent text-accent hover:bg-accent hover:text-white font-semibold px-8 py-3.5 rounded-full transition-all duration-200"
               >
                 Share Your Story
@@ -304,10 +306,10 @@ export default function Home() {
             local news, culture, opinion, or personal stories.
           </p>
           <Link
-            to="/signup"
+            to={user ? "/submit" : "/register"}
             className="bg-accent hover:bg-green-700 text-white font-bold px-10 py-4 rounded-full text-lg transition-all duration-200 hover:scale-105 inline-block"
           >
-            Join Free Today
+            {user ? "Share Your Story" : "Join Free Today"}
           </Link>
         </div>
       </section>
