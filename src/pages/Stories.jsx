@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../services/supabase";
+import SEO from "../components/SEO";
 
 const categoryColors = {
   Economy: "bg-yellow-100 text-yellow-800",
@@ -46,7 +47,6 @@ export default function Stories() {
     fetchPosts();
   }, []);
 
-  // Filter by category
   function handleCategory(cat) {
     setActiveCategory(cat);
     if (cat === "All") {
@@ -56,7 +56,6 @@ export default function Stories() {
     }
   }
 
-  // ── Loading ──
   if (loading)
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center">
@@ -64,7 +63,6 @@ export default function Stories() {
       </div>
     );
 
-  // ── Error ──
   if (error)
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center">
@@ -74,6 +72,12 @@ export default function Stories() {
 
   return (
     <main className="min-h-screen bg-cream">
+      <SEO
+        title="Stories"
+        description="Browse all stories published by the Ekenobizi Voice community — news, culture, economy, sports, and youth voices from Umuahia, Abia State."
+        url="/stories"
+      />
+
       {/* ── PAGE HEADER ── */}
       <section className="bg-charcoal px-6 py-16">
         <div className="max-w-4xl mx-auto text-center">
@@ -116,7 +120,6 @@ export default function Stories() {
 
       {/* ── POSTS GRID ── */}
       <section className="max-w-6xl mx-auto px-6 py-14">
-        {/* Post count */}
         <p className="text-sm text-gray-400 mb-8">
           {filtered.length === 0
             ? "No stories found"
@@ -132,7 +135,6 @@ export default function Stories() {
           )}
         </p>
 
-        {/* Empty state */}
         {filtered.length === 0 ? (
           <div className="text-center py-24">
             <p className="text-gray-400 text-lg">
@@ -152,7 +154,6 @@ export default function Stories() {
                 key={post.id}
                 className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 group flex flex-col"
               >
-                {/* Cover image */}
                 {post.image_url ? (
                   <img
                     src={post.image_url}
@@ -170,9 +171,7 @@ export default function Stories() {
                   </div>
                 )}
 
-                {/* Card body */}
                 <div className="p-6 flex flex-col flex-1">
-                  {/* Category + date */}
                   <div className="flex items-center gap-2 mb-3">
                     <span
                       className={`text-xs font-bold px-3 py-1 rounded-full ${
@@ -191,7 +190,6 @@ export default function Stories() {
                     </span>
                   </div>
 
-                  {/* Title */}
                   <h2
                     className="text-lg font-bold text-charcoal mb-2 group-hover:text-primary transition-colors leading-snug"
                     style={{ fontFamily: "'Playfair Display', serif" }}
@@ -199,12 +197,10 @@ export default function Stories() {
                     {post.title}
                   </h2>
 
-                  {/* Excerpt */}
                   <p className="text-gray-500 text-sm leading-relaxed line-clamp-3 flex-1">
                     {post.excerpt}
                   </p>
 
-                  {/* Author + Read link */}
                   <div className="flex items-center justify-between mt-5 pt-4 border-t border-gray-100">
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center text-white text-xs font-bold flex-shrink-0">

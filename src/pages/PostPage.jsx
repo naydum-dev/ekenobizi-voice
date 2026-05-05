@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "../services/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import Comment from "../components/Comment";
+import SEO from "../components/SEO";
 
 export default function PostPage() {
   const { id } = useParams();
@@ -146,8 +147,51 @@ export default function PostPage() {
     day: "numeric",
   });
 
+  // JSON-LD structured data for Google
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: post.title,
+    description: post.excerpt,
+    image: post.image_url || `https://ekenobizi-voice.vercel.app/hero.jpg`,
+    datePublished: post.created_at,
+    dateModified: post.updated_at || post.created_at,
+    author: {
+      "@type": "Person",
+      name: post.profiles.username,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "Ekenobizi Voice",
+      url: "https://ekenobizi-voice.vercel.app",
+    },
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": `https://ekenobizi-voice.vercel.app/post/${post.id}`,
+    },
+  };
+
   return (
     <div className="min-h-screen bg-cream">
+      <SEO
+        title={post.title}
+        description={post.excerpt}
+        image={post.image_url || undefined}
+        url={`/post/${post.id}`}
+        type="article"
+        article={{
+          publishedTime: post.created_at,
+          author: post.profiles.username,
+          category: post.category,
+        }}
+      />
+
+      {/* JSON-LD structured data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       {/* ── HERO ── */}
       <div className="bg-charcoal text-white py-16 px-6">
         <div className="max-w-3xl mx-auto">

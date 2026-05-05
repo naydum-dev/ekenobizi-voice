@@ -7,6 +7,7 @@ import {
   FaSeedling,
   FaWater,
 } from "react-icons/fa";
+import SEO from "../components/SEO";
 
 function animate(delay) {
   return {
@@ -49,6 +50,12 @@ const pillars = [
 export default function About() {
   return (
     <main className="min-h-screen bg-cream">
+      <SEO
+        title="About Us"
+        description="Learn about Ekenobizi — an autonomous community in Umuahia South, Abia State, Nigeria. Our mission is to inform, connect, and preserve our community's story."
+        url="/about"
+      />
+
       {/* ── HERO ── */}
       <section
         className="relative text-white py-24 px-6 overflow-hidden min-h-[500px] flex items-center"

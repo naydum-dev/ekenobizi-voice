@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../services/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import heroImage from "../assets/hero.jpg";
+import SEO from "../components/SEO";
 
 const categoryColors = {
   Economy: "bg-yellow-100 text-yellow-800",
@@ -69,6 +70,12 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-cream">
+      <SEO
+        title="Home"
+        description="Ekenobizi Voice — real stories, local voices, and community-driven journalism from the heart of Umuahia, Abia State."
+        url="/"
+      />
+
       {/* ── HERO ── */}
       <section
         className="relative text-white py-24 px-6 overflow-hidden min-h-[600px] flex items-center"
@@ -158,7 +165,6 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* ── Featured post (first post) ── */}
           <article className="lg:col-span-2 bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 group">
-            {/* Image or placeholder */}
             {posts[0].image_url ? (
               <img
                 src={posts[0].image_url}
@@ -228,7 +234,6 @@ export default function Home() {
                 key={post.id}
                 className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 group flex flex-col"
               >
-                {/* Image — only if available */}
                 {post.image_url && (
                   <img
                     src={post.image_url}
