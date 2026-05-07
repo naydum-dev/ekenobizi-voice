@@ -7,6 +7,7 @@ import {
   FaSeedling,
   FaWater,
 } from "react-icons/fa";
+import { FaFacebook, FaXTwitter } from "react-icons/fa6";
 import SEO from "../components/SEO";
 
 function animate(delay) {
@@ -26,6 +27,7 @@ const villages = [
   { name: "Umuzam", icon: <FaSeedling className="text-accent text-2xl" /> },
   { name: "Azumiri", icon: <FaWater className="text-primary text-2xl" /> },
 ];
+
 const pillars = [
   {
     title: "Inform",
@@ -44,6 +46,19 @@ const pillars = [
     color: "bg-charcoal",
     description:
       "Our culture, our history, our landmarks — documented here for the generations that come after us. Ekenobizi's story deserves to be told by Ekenobizi people.",
+  },
+];
+
+const SOCIAL_LINKS = [
+  {
+    icon: <FaFacebook size={22} />,
+    href: "https://web.facebook.com/EkenobiziVoice",
+    label: "Facebook",
+  },
+  {
+    icon: <FaXTwitter size={22} />,
+    href: "https://x.com/ekenobizivoice",
+    label: "X (Twitter)",
   },
 ];
 
@@ -264,11 +279,28 @@ export default function About() {
           >
             Be part of the community
           </h2>
-          <p className="text-gray-400 text-lg mb-8">
+          <p className="text-gray-400 text-lg mb-6">
             Register to join the conversation, share your stories, and stay
             connected to everything happening in Ekenobizi — wherever you are in
             the world.
           </p>
+
+          {/* Social icons */}
+          <div className="flex items-center justify-center gap-4 mb-8">
+            {SOCIAL_LINKS.map(({ icon, href, label }) => (
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={label}
+                className="w-11 h-11 rounded-full border border-white/20 flex items-center justify-center text-gray-400 hover:text-white hover:border-accent hover:bg-white/10 transition-all duration-200"
+              >
+                {icon}
+              </a>
+            ))}
+          </div>
+
           <Link
             to="/register"
             className="bg-accent hover:bg-green-700 text-white font-bold px-10 py-4 rounded-full text-lg transition-all duration-200 hover:scale-105 inline-block"

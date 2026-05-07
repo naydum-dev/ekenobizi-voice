@@ -7,6 +7,7 @@
 **Tech Stack:** React + Tailwind CSS (Frontend/Vercel) + Supabase (Backend)
 **Developer Environment:** Windows, VSCode, Node.js v24.11.1, Git v2.51.1
 **Terminal:** Git Bash (use `touch` not PowerShell's `New-Item`)
+**Live URL:** https://ekenobizi-voice.vercel.app
 
 ---
 
@@ -22,7 +23,7 @@
 - **Heading Font:** Playfair Display (Google Fonts) — `font-playfair`
 - **Body Font:** Inter (Google Fonts)
 - **Logo:** `src/assets/ekenobizi_voice_logo.png` — transparent background PNG. Displayed at `h-20` in Header.
-- **Hero Image:** `src/assets/hero.jpg` — Home page hero background
+- **Hero Image:** `src/assets/hero.jpg` — Home page hero background. Also copied to `public/hero.jpg` for OG image use.
 - **About Hero:** `src/assets/about-hero.jpeg` — About page hero background
 
 ---
@@ -32,6 +33,8 @@
 ```
 ekenobizi-voice/
 ├── public/
+│   ├── favicon.ico
+│   └── hero.jpg                  ← copy of src/assets/hero.jpg for OG image
 ├── src/
 │   ├── assets/
 │   │   ├── ekenobizi_voice_logo.png
@@ -42,7 +45,8 @@ ekenobizi-voice/
 │   │   ├── Footer.jsx
 │   │   ├── PostCard.jsx
 │   │   ├── Comment.jsx
-│   │   └── ProtectedRoute.jsx
+│   │   ├── ProtectedRoute.jsx
+│   │   └── SEO.jsx
 │   ├── contexts/
 │   │   └── AuthContext.jsx
 │   ├── hooks/
@@ -84,6 +88,7 @@ tailwindcss: latest
 react-router-dom: latest
 @supabase/supabase-js: latest
 react-icons: latest
+react-helmet-async: latest
 ```
 
 ---
@@ -136,6 +141,86 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+```
+
+### src/main.jsx
+
+```jsx
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { HelmetProvider } from "react-helmet-async";
+import "./index.css";
+import App from "./App.jsx";
+
+createRoot(document.getElementById("root")).render(
+  <StrictMode>
+    <HelmetProvider>
+      <App />
+    </HelmetProvider>
+  </StrictMode>,
+);
+```
+
+### src/components/SEO.jsx
+
+```jsx
+import { Helmet } from "react-helmet-async";
+
+const SITE_NAME = "Ekenobizi Voice";
+const SITE_URL = "https://ekenobizi-voice.vercel.app";
+const DEFAULT_DESCRIPTION =
+  "Ekenobizi Voice is the community blog for Ekenobizi in Umuahia, Abia State — sharing stories, news, and voices from our five villages.";
+const DEFAULT_IMAGE = `${SITE_URL}/hero.jpg`;
+
+export default function SEO({
+  title,
+  description = DEFAULT_DESCRIPTION,
+  image = DEFAULT_IMAGE,
+  url,
+  type = "website",
+  article = null,
+}) {
+  const fullTitle = title ? `${title} – ${SITE_NAME}` : SITE_NAME;
+  const canonicalUrl = url ? `${SITE_URL}${url}` : SITE_URL;
+  const ogImage = image || DEFAULT_IMAGE;
+
+  return (
+    <Helmet>
+      {/* Basic */}
+      <title>{fullTitle}</title>
+      <meta name="description" content={description} />
+      <link rel="canonical" href={canonicalUrl} />
+
+      {/* Open Graph */}
+      <meta property="og:site_name" content={SITE_NAME} />
+      <meta property="og:title" content={fullTitle} />
+      <meta property="og:description" content={description} />
+      <meta property="og:image" content={ogImage} />
+      <meta property="og:url" content={canonicalUrl} />
+      <meta property="og:type" content={type} />
+
+      {/* Twitter Card */}
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content={fullTitle} />
+      <meta name="twitter:description" content={description} />
+      <meta name="twitter:image" content={ogImage} />
+
+      {/* Article-specific (PostPage only) */}
+      {article?.publishedTime && (
+        <meta
+          property="article:published_time"
+          content={article.publishedTime}
+        />
+      )}
+      {article?.author && (
+        <meta property="article:author" content={article.author} />
+      )}
+      {article?.category && (
+        <meta property="article:section" content={article.category} />
+      )}
+    </Helmet>
+  );
+}
 ```
 
 ### .env.local
@@ -422,6 +507,95 @@ CREATE POLICY "Public can view post images"
 
 ---
 
+## SEO SYSTEM (Day 16)
+
+### Overview
+
+- **Library:** `react-helmet-async` — injects tags into `<head>` from inside any page component
+- **Provider:** `HelmetProvider` wraps entire app in `src/main.jsx`
+- **Component:** `src/components/SEO.jsx` — reusable, accepts props per page
+- **OG image fallback:** `public/hero.jpg` — accessible at `https://ekenobizi-voice.vercel.app/hero.jpg`
+
+### SEO Component Props
+
+| Prop          | Type   | Default         | Description                                                |
+| ------------- | ------ | --------------- | ---------------------------------------------------------- |
+| `title`       | string | —               | Page title. Rendered as `{title} – Ekenobizi Voice`        |
+| `description` | string | Site default    | Meta description and OG description                        |
+| `image`       | string | `/hero.jpg` URL | OG and Twitter card image (must be absolute URL)           |
+| `url`         | string | Site root       | Page path e.g. `"/about"` — domain prepended automatically |
+| `type`        | string | `"website"`     | OG type — use `"article"` for PostPage                     |
+| `article`     | object | `null`          | `{ publishedTime, author, category }` — PostPage only      |
+
+### Tags injected per page
+
+| Page     | Title                          | Description                  | Type    | JSON-LD              |
+| -------- | ------------------------------ | ---------------------------- | ------- | -------------------- |
+| Home     | Home – Ekenobizi Voice         | Community journalism tagline | website | No                   |
+| About    | About Us – Ekenobizi Voice     | Community background         | website | No                   |
+| Stories  | Stories – Ekenobizi Voice      | Archive description          | website | No                   |
+| PostPage | {post.title} – Ekenobizi Voice | {post.excerpt}               | article | Yes (Article schema) |
+
+### JSON-LD on PostPage
+
+Injects `<script type="application/ld+json">` with Article schema including:
+
+- `headline`, `description`, `image`, `datePublished`, `dateModified`
+- `author` (Person), `publisher` (Organization), `mainEntityOfPage`
+
+### index.html fallback tags
+
+Base meta tags in `index.html` serve as fallbacks before React hydrates:
+
+- `<title>Ekenobizi Voice</title>`
+- Default `<meta name="description">`, Open Graph, and Twitter Card tags
+- These are overridden per-page by `react-helmet-async`
+
+### Testing tools
+
+- OG tags: **opengraph.xyz**
+- JSON-LD / rich results: **search.google.com/test/rich-results**
+
+---
+
+## SOCIAL MEDIA SYSTEM (Day 17)
+
+### Platforms
+
+| Platform    | URL                                     |
+| ----------- | --------------------------------------- |
+| Facebook    | https://web.facebook.com/EkenobiziVoice |
+| X (Twitter) | https://x.com/ekenobizivoice            |
+
+### Where Social Links Appear
+
+- **Footer** — "Follow Us" column (4th column) with icon + label links
+- **About page** — Two circular icon buttons in the CTA section, between the paragraph and the Join button
+
+### Icons Used
+
+- `FaFacebook` from `react-icons/fa6`
+- `FaXTwitter` from `react-icons/fa6`
+
+### SOCIAL_LINKS pattern (used in both Footer and About)
+
+```js
+const SOCIAL_LINKS = [
+  {
+    icon: <FaFacebook size={20} />,
+    href: "https://web.facebook.com/EkenobiziVoice",
+    label: "Facebook",
+  },
+  {
+    icon: <FaXTwitter size={20} />,
+    href: "https://x.com/ekenobizivoice",
+    label: "X (Twitter)",
+  },
+];
+```
+
+---
+
 ## ADMIN SYSTEM
 
 - `is_admin` boolean column on `profiles` table (DEFAULT false)
@@ -437,33 +611,34 @@ CREATE POLICY "Public can view post images"
 
 ## PAGES BUILT
 
-| Page            | Path             | File                         | Status                                                                                        |
-| --------------- | ---------------- | ---------------------------- | --------------------------------------------------------------------------------------------- |
-| Home            | /                | src/pages/Home.jsx           | Done — hero, featured + sidebar layout, images, auth-aware hero buttons                       |
-| Stories         | /stories         | src/pages/Stories.jsx        | Done — clean 3-column archive grid, category filter, post count                               |
-| Post            | /post/:id        | src/pages/PostPage.jsx       | Done — cover image, comments, admin edit/delete buttons                                       |
-| About           | /about           | src/pages/About.jsx          | Done — full community page                                                                    |
-| Submit Story    | /submit          | src/pages/SubmitStory.jsx    | Done — form for logged-in members, pending review workflow, success screen                    |
-| Create Post     | /create-post     | src/pages/CreatePost.jsx     | Done — image upload, admin only                                                               |
-| Edit Post       | /edit-post/:id   | src/pages/EditPost.jsx       | Done — pre-filled form, image replace/remove, admin only                                      |
-| Register        | /register        | src/pages/Register.jsx       | Done — built and wired                                                                        |
-| Login           | /login           | src/pages/Login.jsx          | Done — built and wired                                                                        |
-| Profile         | /profile         | src/pages/Profile.jsx        | Done — username + full name edit                                                              |
-| Forgot Password | /forgot-password | src/pages/ForgotPassword.jsx | Done — built and wired                                                                        |
-| Reset Password  | /reset-password  | src/pages/ResetPassword.jsx  | Done — built and wired                                                                        |
-| Admin Dashboard | /admin           | src/pages/AdminDashboard.jsx | Done — stats (incl. pending submissions), members, comment moderation, submissions review tab |
+| Page            | Path             | File                         | Status                                                                                                       |
+| --------------- | ---------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Home            | /                | src/pages/Home.jsx           | Done — hero, featured + sidebar layout, images, auth-aware hero buttons, SEO                                 |
+| Stories         | /stories         | src/pages/Stories.jsx        | Done — 3-column archive grid, category filter, keyword search, infinite scroll (9 per page), post count, SEO |
+| Post            | /post/:id        | src/pages/PostPage.jsx       | Done — cover image, comments, admin edit/delete buttons, SEO + JSON-LD                                       |
+| About           | /about           | src/pages/About.jsx          | Done — full community page, social icons in CTA, SEO                                                         |
+| Submit Story    | /submit          | src/pages/SubmitStory.jsx    | Done — form for logged-in members, pending review workflow, success screen                                   |
+| Create Post     | /create-post     | src/pages/CreatePost.jsx     | Done — image upload, admin only                                                                              |
+| Edit Post       | /edit-post/:id   | src/pages/EditPost.jsx       | Done — pre-filled form, image replace/remove, admin only                                                     |
+| Register        | /register        | src/pages/Register.jsx       | Done — built and wired                                                                                       |
+| Login           | /login           | src/pages/Login.jsx          | Done — built and wired                                                                                       |
+| Profile         | /profile         | src/pages/Profile.jsx        | Done — username + full name edit                                                                             |
+| Forgot Password | /forgot-password | src/pages/ForgotPassword.jsx | Done — built and wired                                                                                       |
+| Reset Password  | /reset-password  | src/pages/ResetPassword.jsx  | Done — built and wired                                                                                       |
+| Admin Dashboard | /admin           | src/pages/AdminDashboard.jsx | Done — stats (incl. pending submissions), members, comment moderation, submissions review tab                |
 
 ---
 
 ## COMPONENTS BUILT
 
-| Component      | File                              | Purpose                                              |
-| -------------- | --------------------------------- | ---------------------------------------------------- |
-| Header         | src/components/Header.jsx         | Two-row nav, auth-aware, reads username from profile |
-| Footer         | src/components/Footer.jsx         | 3-column, dynamic copyright year                     |
-| PostCard       | src/components/PostCard.jsx       | Reusable post preview card with image support        |
-| Comment        | src/components/Comment.jsx        | Single comment with edit/delete (owner only)         |
-| ProtectedRoute | src/components/ProtectedRoute.jsx | Guards private routes                                |
+| Component      | File                              | Purpose                                                       |
+| -------------- | --------------------------------- | ------------------------------------------------------------- |
+| Header         | src/components/Header.jsx         | Two-row nav, auth-aware, reads username from profile          |
+| Footer         | src/components/Footer.jsx         | 4-column, dynamic copyright year, social media links          |
+| PostCard       | src/components/PostCard.jsx       | Reusable post preview card with image support                 |
+| Comment        | src/components/Comment.jsx        | Single comment with edit/delete (owner only)                  |
+| ProtectedRoute | src/components/ProtectedRoute.jsx | Guards private routes                                         |
+| SEO            | src/components/SEO.jsx            | Injects per-page meta, OG, Twitter Card, canonical via Helmet |
 
 ---
 
@@ -504,6 +679,17 @@ Day 15: Add submissions table with RLS policies
 Day 15: Add SubmitStory page — form, success screen, pending review flow
 Day 15: Update AdminDashboard — Submissions tab, approve and dismiss actions
 Day 15: Update CONTEXT.md to reflect Day 15 progress
+Day 16: Install react-helmet-async, wrap app in HelmetProvider
+Day 16: Add SEO.jsx component — meta, OG, Twitter Card, canonical tags
+Day 16: Add SEO to Home, About, Stories pages
+Day 16: Add SEO + JSON-LD Article schema to PostPage
+Day 16: Copy hero.jpg to public/ for OG image
+Day 16: Update index.html — proper title, base fallback meta tags
+Day 16: Update CONTEXT.md to reflect Day 16 progress
+Day 17: Add social media links — Facebook and X (Twitter) to Footer and About page
+Day 17: Add keyword search to Stories page — filters on title and excerpt
+Day 17: Add infinite scroll to Stories page — 9 posts per batch, IntersectionObserver
+Day 17: Update CONTEXT.md to reflect Day 17 progress
 ```
 
 ---
@@ -629,35 +815,68 @@ Day 15: Update CONTEXT.md to reflect Day 15 progress
 - Image upload kept admin-controlled — members submit text only; admin adds cover image via Edit Post after approval
 - Always add RLS policies before building UI — missing policies fail silently with empty results
 
+### Day 16
+
+- `react-helmet-async` is the correct library for React 18+ — the older `react-helmet` is unmaintained and breaks in strict mode
+- `HelmetProvider` must wrap the entire app at the root level (in `main.jsx`) — not just individual pages
+- OG images must be absolute public URLs — local `src/assets/` files are not accessible to crawlers; copy to `public/` folder instead
+- Files in `public/` are served at the root URL — `public/hero.jpg` becomes `https://domain.com/hero.jpg` automatically by Vite
+- `index.html` base tags serve as fallback before React hydrates — important for crawlers that don't execute JavaScript
+- `react-helmet-async` overrides `index.html` tags per page — no conflict; the most specific tag wins
+- `type="article"` on OG tells social platforms this is an article, enabling richer previews on Facebook and LinkedIn
+- `og:article:published_time`, `og:article:author`, `og:article:section` — article-specific OG tags for PostPage
+- JSON-LD structured data (`<script type="application/ld+json">`) — machine-readable schema that makes Google eligible to show rich results
+- `dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}` — correct React pattern for injecting JSON-LD scripts
+- Auth pages (Login, Register, ForgotPassword, ResetPassword) don't need SEO — they are utility pages not indexed meaningfully by Google
+- Test OG tags at opengraph.xyz — shows exactly what WhatsApp/Facebook/Twitter will display when a link is shared
+- Test JSON-LD at search.google.com/test/rich-results — shows if Google can parse the Article schema
+
+### Day 17
+
+- `FaFacebook` and `FaXTwitter` are from `react-icons/fa6` — the fa6 package includes the updated X (Twitter) icon; fa (fa5) only has the old bird logo
+- `SOCIAL_LINKS` array pattern — centralises icon, href, and label in one place; map over it to render links; easy to add new platforms later
+- `target="_blank" rel="noopener noreferrer"` — always use both on external links; `noopener` prevents the new tab from accessing `window.opener`, `noreferrer` also hides the referrer header
+- `aria-label` on icon-only buttons — screen readers need a text label when there is no visible text next to the icon
+- Facebook uses `web.facebook.com` subdomain — some regions redirect `facebook.com` to the app; `web.facebook.com` always opens the desktop web version
+- Infinite scroll with `IntersectionObserver` — attach observer to a sentinel div at the bottom of the list; fires a callback when it enters the viewport; cleaner than scroll event listeners
+- `useCallback` on `loadMore` — prevents the observer `useEffect` from re-running on every render by stabilising the function reference
+- Sentinel pattern — a hidden div at the bottom of the grid acts as the trigger; spinner shown inside it while more posts exist
+- Client-side pagination with `slice()` — all posts fetched once; `visible` state holds the current slice; `page` tracks how many batches have loaded
+- Search + category filter composition — both filters applied sequentially on the same `allPosts` array; resetting `page` and `visible` on every filter change keeps the grid consistent
+- Clear button on search input — conditional render based on `searchQuery` being non-empty; resets to empty string on click
+- Result count line reflects active filters — shows category and search term together when both are active; gives users clear feedback on what they are viewing
+
 ---
 
 ## CURRENT PROJECT STATE
 
-**Status:** Days 1–15 Complete
+**Status:** Days 1–17 Complete
 **Dev Server:** `npm run dev` → http://localhost:5173
+**Live URL:** https://ekenobizi-voice.vercel.app
 **Auth:** Registration + Login + Logout + Session persistence + Password reset all working
 **Profiles:** Users can view and edit their username and full name. Changes reflect in Header immediately via `refreshProfile()`
 **Posts:** Home page displays live posts with featured + sidebar layout. Cover images show on cards and post pages. Admin can create, edit, and delete posts. Edit form pre-fills with existing data including current image.
-**Stories Page:** `/stories` — clean 3-column archive grid of all published posts. Sticky category filter bar. Client-side filtering. Post count display.
+**Stories Page:** `/stories` — clean 3-column archive grid of all published posts. Sticky category filter bar. Keyword search bar filters on title and excerpt. Infinite scroll loads 9 posts per batch via IntersectionObserver. Post count display reflects active filters.
 **Comments:** Display on post pages. Authenticated users can post. Users can edit and delete their own comments. Admin can delete any comment from the dashboard. Confirmation dialog before delete.
 **Submissions:** Logged-in members can submit stories via `/submit`. Submissions go to `pending` status. Admin reviews in Dashboard Submissions tab — can approve (publishes as post) or dismiss. Resolved submissions tracked.
-**About:** Full community page with hero image, five villages, mission pillars and story sections.
+**About:** Full community page with hero image, five villages, mission pillars, story sections, and social media icons in CTA.
 **Admin System:** `is_admin` flag on profiles. Write, Edit, Delete, and Admin Dashboard restricted to admins. RLS enforced on all post, comment, and submission operations. Admin username: `EkenobiziVoice`.
 **Admin Dashboard:** `/admin` route — live stats (users, posts, comments, pending submissions), member list with real-time search, comment moderation, submissions review with approve/dismiss.
 **Storage:** `post-images` bucket live. Admins can upload and replace images, everyone can view.
 **Database:** 4 tables live (profiles, posts, comments, submissions). Trigger + all RLS policies active.
+**SEO:** `react-helmet-async` installed. Per-page meta tags, Open Graph, Twitter Card, and canonical URLs on Home, About, Stories, and PostPage. JSON-LD Article schema on PostPage. Base fallback tags in `index.html`. OG image at `public/hero.jpg`.
+**Social Media:** Facebook (`https://web.facebook.com/EkenobiziVoice`) and X (`https://x.com/ekenobizivoice`) linked in Footer and About page CTA. Icons from `react-icons/fa6`.
 
 ---
 
 ## NEXT STEPS
 
-### DAY 16: Suggestions welcome
+### DAY 18: Suggestions welcome
 
-- Pagination or infinite scroll on Home and Stories pages
-- Search / filter posts by category on Home
 - Reading time estimate on posts
-- SEO improvements (page titles, meta description)
-- Deploy to Vercel
+- Pagination or infinite scroll on Home page
+- Custom domain setup on Vercel
+- Test SEO tags live — opengraph.xyz + Google Rich Results Test
 
 ---
 
@@ -722,7 +941,22 @@ Day 15: Update CONTEXT.md to reflect Day 15 progress
 48. `<details>/<summary>` used for full story preview in admin — native HTML, no JS needed
 49. Image upload kept admin-controlled — members submit text only, admin adds image via Edit Post
 50. Pending submissions badge on Dashboard tab — only renders when count > 0
+51. react-helmet-async used over react-helmet — compatible with React 18 strict mode
+52. HelmetProvider wraps entire app in main.jsx — required for Helmet to work anywhere in the tree
+53. OG images must be absolute URLs pointing to publicly accessible files — src/assets/ is not public
+54. Files placed in public/ are served at the site root by Vite — no import needed, just reference by URL
+55. index.html base meta tags act as crawlers fallback before React hydrates
+56. JSON-LD injected via dangerouslySetInnerHTML on PostPage — correct React pattern for script tags
+57. Auth pages skipped for SEO — utility pages with no meaningful indexing or sharing value
+58. SOCIAL_LINKS array pattern — centralise platform data in one place, map to render; easy to extend
+59. FaFacebook and FaXTwitter from react-icons/fa6 — fa6 has the updated X logo; fa5 only has the old bird
+60. target="\_blank" rel="noopener noreferrer" — always used together on all external links
+61. aria-label on icon-only anchor tags — required for screen reader accessibility
+62. Infinite scroll uses IntersectionObserver on a sentinel div — cleaner than scroll event listeners
+63. useCallback on loadMore — stabilises function reference so the observer useEffect does not re-run every render
+64. Client-side pagination with slice() — all posts fetched once, visible state holds current batch
+65. Search and category filters applied sequentially on allPosts — page and visible reset on every filter change
 
 ---
 
-_Last Updated: Day 15 Complete — May 1, 2026_
+_Last Updated: Day 17 Complete — May 7, 2026_
