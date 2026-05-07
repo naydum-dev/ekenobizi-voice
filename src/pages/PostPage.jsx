@@ -4,6 +4,10 @@ import { supabase } from "../services/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import Comment from "../components/Comment";
 import SEO from "../components/SEO";
+import { FaFacebook, FaXTwitter } from "react-icons/fa6";
+import { FiLink } from "react-icons/fi";
+
+const SITE_URL = "https://ekenobizi-voice.vercel.app";
 
 export default function PostPage() {
   const { id } = useParams();
@@ -13,6 +17,7 @@ export default function PostPage() {
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   const [comments, setComments] = useState([]);
   const [commentsLoading, setCommentsLoading] = useState(true);
@@ -124,6 +129,13 @@ export default function PostPage() {
     }
   }
 
+  function handleCopyLink(postUrl) {
+    navigator.clipboard.writeText(postUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
   if (loading)
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center">
@@ -147,13 +159,17 @@ export default function PostPage() {
     day: "numeric",
   });
 
+  const postUrl = `${SITE_URL}/post/${post.id}`;
+  const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(postUrl)}`;
+  const xShareUrl = `https://x.com/intent/tweet?url=${encodeURIComponent(postUrl)}&text=${encodeURIComponent(post.title)}`;
+
   // JSON-LD structured data for Google
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
     headline: post.title,
     description: post.excerpt,
-    image: post.image_url || `https://ekenobizi-voice.vercel.app/hero.jpg`,
+    image: post.image_url || `${SITE_URL}/hero.jpg`,
     datePublished: post.created_at,
     dateModified: post.updated_at || post.created_at,
     author: {
@@ -163,11 +179,11 @@ export default function PostPage() {
     publisher: {
       "@type": "Organization",
       name: "Ekenobizi Voice",
-      url: "https://ekenobizi-voice.vercel.app",
+      url: SITE_URL,
     },
     mainEntityOfPage: {
       "@type": "WebPage",
-      "@id": `https://ekenobizi-voice.vercel.app/post/${post.id}`,
+      "@id": postUrl,
     },
   };
 
@@ -259,11 +275,54 @@ export default function PostPage() {
       {/* ── CONTENT ── */}
       <div className="max-w-3xl mx-auto px-6 py-12">
         <div className="bg-white rounded-2xl p-8 md:p-12 shadow-sm">
+          {/* Excerpt */}
           <p className="text-gray-600 text-lg leading-relaxed font-medium mb-8 border-l-4 border-primary pl-4">
             {post.excerpt}
           </p>
+
+          {/* Post body */}
           <div className="text-charcoal leading-8 text-base whitespace-pre-wrap">
             {post.content}
+          </div>
+
+          {/* ── SHARE BAR ── */}
+          <div className="mt-10 pt-8 border-t border-gray-100">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">
+              Share this story
+            </p>
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Copy Link */}
+              <button
+                onClick={() => handleCopyLink(postUrl)}
+                className="flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 text-sm font-semibold text-gray-600 hover:border-primary hover:text-primary transition-all duration-200"
+              >
+                <FiLink size={15} />
+                {copied ? "Copied!" : "Copy Link"}
+              </button>
+
+              {/* Share on Facebook */}
+              <a
+                href={facebookShareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Share on Facebook"
+                className="flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 text-sm font-semibold text-gray-600 hover:border-blue-600 hover:text-blue-600 transition-all duration-200"
+              >
+                <FaFacebook size={15} />
+                Facebook
+              </a>
+
+              {/* Share on X */}
+              <a
+                href={xShareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Share on X"
+                className="flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 text-sm font-semibold text-gray-600 hover:border-charcoal hover:text-charcoal transition-all duration-200"
+              >
+                <FaXTwitter size={15} />X
+              </a>
+            </div>
           </div>
         </div>
 
